@@ -1,0 +1,97 @@
+{
+  "name": "Tribunais Estaduais",
+  "description": "Scraper for Brazilian state courts decisions and jurisprudence",
+  "start_url": "https://www.tjsp.jus.br/",
+  "fallback_urls": [
+    "https://www.tjrj.jus.br/",
+    "https://www.tjmg.jus.br/",
+    "https://www.tjrs.jus.br/"
+  ],
+  "target_courts": {
+    "TJSP": {
+      "url": "https://www.tjsp.jus.br/ConsultaCompleta",
+      "selectors": {
+        "item": ".unificado",
+        "title": ".ementaClass",
+        "date": ".dataJulgamento",
+        "relator": ".nomeRelator",
+        "case_number": ".numeroRegistro"
+      }
+    },
+    "TJRJ": {
+      "url": "https://www.tjrj.jus.br/web/guest/consulta-jurisprudencia",
+      "selectors": {
+        "item": ".resultado-item",
+        "title": ".titulo-acordao",
+        "date": ".data-julgamento",
+        "relator": ".relator-nome"
+      }
+    },
+    "TJMG": {
+      "url": "https://www.tjmg.jus.br/jurisprudencia/",
+      "selectors": {
+        "item": ".item-jurisprudencia",
+        "title": ".ementa",
+        "date": ".data-disponibilizacao"
+      }
+    }
+  },
+  "selectors": {
+    "container": ".resultado-busca, .lista-jurisprudencia, .search-results",
+    "item": ".item-resultado, .acordao-item, .decision-item",
+    "title": "h3, h4, .titulo, .ementa",
+    "date": ".data-julgamento, .data-publicacao, .date",
+    "court": ".tribunal, .origem, .instancia",
+    "case_number": ".numero-processo, .registro",
+    "summary": ".ementa, .resumo, .decisao",
+    "link": "a[href*='acordao'], a[href*='decisao']",
+    "pdf_link": "a[href$='.pdf']",
+    "relator": ".relator, .desembargador",
+    "chamber": ".camara, .turma, .grupo",
+    "class": ".classe, .natureza"
+  },
+  "pagination": {
+    "type": "button",
+    "selector": ".proximo, .next, [title*='Próxima']",
+    "max_pages": 8
+  },
+  "filters": {
+    "states": [
+      "SP",
+      "RJ", 
+      "MG",
+      "RS",
+      "PR",
+      "SC",
+      "BA",
+      "GO"
+    ],
+    "search_terms": [
+      "apelação",
+      "agravo",
+      "embargos",
+      "mandado de segurança"
+    ]
+  },
+  "delays": {
+    "page_load": 4000,
+    "between_requests": 3500,
+    "retry_delay": 7000
+  },
+  "output": {
+    "format": "json", 
+    "fields": [
+      "title",
+      "date",
+      "court",
+      "case_number",
+      "summary",
+      "link",
+      "pdf_link",
+      "relator",
+      "chamber",
+      "class",
+      "scraped_at"
+    ]
+  }
+} 
