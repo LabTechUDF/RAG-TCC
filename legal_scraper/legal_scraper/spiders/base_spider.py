@@ -26,7 +26,6 @@ class BrazilianLegalSpiderBase(scrapy.Spider):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.logger = logging.getLogger(self.__class__.__name__)
         self.config = self.load_config()
         self.scraped_urls = set()
         
