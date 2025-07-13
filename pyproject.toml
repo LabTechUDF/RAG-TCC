@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "legal_scraper"}]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.12.11"
 
 # Core Scrapy dependencies
 scrapy = ">=2.11.0"
@@ -63,7 +63,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 88
-target-version = ['py39']
+target-version = ['py312']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -86,7 +86,7 @@ line_length = 88
 known_first_party = ["legal_scraper"]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true

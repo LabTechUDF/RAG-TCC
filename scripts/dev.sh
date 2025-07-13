@@ -11,7 +11,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Add Poetry to PATH
-export PATH="$HOME/Library/Python/3.9/bin:$PATH"
+export PATH="$HOME/Library/Python/3.12/bin:$PATH"
 
 print_help() {
     echo -e "${BLUE}🇧🇷 Brazilian Legal Scraper - Development Commands${NC}"
