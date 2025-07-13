@@ -1,0 +1,100 @@
+[tool.poetry]
+name = "brazilian-legal-scraper"
+version = "0.1.0"
+description = "Professional Brazilian Legal Content Scraper using Scrapy and Playwright"
+authors = ["Legal Research Team <legal@example.com>"]
+readme = "README.md"
+packages = [{include = "legal_scraper"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+
+# Core Scrapy dependencies
+scrapy = ">=2.11.0"
+scrapy-playwright = ">=0.0.40"
+
+# Playwright for browser automation
+playwright = ">=1.40.0"
+
+# HTML parsing and web utilities  
+beautifulsoup4 = ">=4.12.0"
+lxml = ">=4.9.0"
+w3lib = ">=2.1.0"
+
+# HTTP handling
+requests = ">=2.31.0"
+urllib3 = ">=2.0.0"
+
+# Data processing
+itemloaders = ">=1.1.0"
+itemadapter = ">=0.8.0"
+
+# Async support
+twisted = ">=22.10.0"
+
+# Date and time handling
+python-dateutil = ">=2.8.0"
+
+# Logging and monitoring
+structlog = ">=23.1.0"
+
+[tool.poetry.group.dev.dependencies]
+# Development and testing tools
+pytest = ">=7.4.0"
+pytest-asyncio = ">=0.21.0"
+black = ">=23.0.0"
+isort = ">=5.12.0"
+flake8 = ">=6.0.0"
+mypy = ">=1.5.0"
+
+# Optional: For advanced text processing
+nltk = {version = ">=3.8.0", optional = true}
+spacy = {version = ">=3.6.0", optional = true}
+
+[tool.poetry.extras]
+nlp = ["nltk", "spacy"]
+
+# [tool.poetry.scripts]
+# legal-scraper = "legal_scraper.manage:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py39']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["legal_scraper"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+asyncio_mode = "auto"

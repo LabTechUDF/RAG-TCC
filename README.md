@@ -25,9 +25,26 @@ A powerful, production-ready web scraper for Brazilian legal content using **Scr
 
 ### **Prerequisites**
 - Python 3.9+ 
-- pip or conda
+- Poetry (recommended) or pip
 
-### **Setup**
+### **Setup with Poetry (Recommended)**
+```bash
+# Clone the repository
+git clone <repository-url>
+cd learning-cursor
+
+# Install using our convenience script
+./scripts/dev.sh install
+
+# Or manually with Poetry
+poetry install
+poetry run playwright install chromium
+
+# Verify installation
+./scripts/dev.sh list
+```
+
+### **Alternative Setup with pip**
 ```bash
 # Clone the repository
 git clone <repository-url>
@@ -45,43 +62,84 @@ cd legal_scraper && python3 manage.py list
 
 ## 🎯 Quick Start
 
-### **List Available Scrapers**
+### **Using Poetry (Recommended)**
+
+#### **List Available Scrapers**
 ```bash
-cd legal_scraper
-python3 manage.py list
+./scripts/dev.sh list
 ```
 
-### **Run a Single Scraper**
+#### **Run a Single Scraper**
 ```bash
 # Run jurisprudence scraper
-python3 manage.py run jurisprudencia
+./scripts/dev.sh run jurisprudencia
 
 # Run with dry-run (no data saved)
-python3 manage.py run jurisprudencia --dry-run
+./scripts/dev.sh run jurisprudencia --dry-run
 
 # Limit to 5 pages
-python3 manage.py run direito_penal --max-pages 5
+./scripts/dev.sh run direito_penal --max-pages 5
 ```
 
-### **Run All Scrapers**
+#### **Development Workflow**
+```bash
+# Test all scrapers
+./scripts/dev.sh test
+
+# Format code
+./scripts/dev.sh format
+
+# Run linting
+./scripts/dev.sh lint
+
+# View statistics
+./scripts/dev.sh stats
+
+# Get help
+./scripts/dev.sh help
+```
+
+### **Alternative: Direct Commands**
+
+#### **List Available Scrapers**
+```bash
+cd legal_scraper
+poetry run python manage.py list
+# or with pip: python3 manage.py list
+```
+
+#### **Run a Single Scraper**
+```bash
+# Run jurisprudence scraper
+poetry run python manage.py run jurisprudencia
+# or with pip: python3 manage.py run jurisprudencia
+
+# Run with dry-run (no data saved)
+poetry run python manage.py run jurisprudencia --dry-run
+
+# Limit to 5 pages
+poetry run python manage.py run direito_penal --max-pages 5
+```
+
+#### **Run All Scrapers**
 ```bash
 # Run all themes
-python3 manage.py run-all
+poetry run python manage.py run-all
 
 # Test run without saving data
-python3 manage.py run-all --dry-run
+poetry run python manage.py run-all --dry-run
 ```
 
-### **Direct Scrapy Commands**
+#### **Direct Scrapy Commands**
 ```bash
 # Run with Scrapy directly
-python3 -m scrapy crawl jurisprudencia
+poetry run scrapy crawl jurisprudencia
 
 # Save to specific file
-python3 -m scrapy crawl sumulas_stf -o data/sumulas_$(date +%Y%m%d).json
+poetry run scrapy crawl sumulas_stf -o data/sumulas_$(date +%Y%m%d).json
 
 # Custom settings
-python3 -m scrapy crawl direito_penal -s DOWNLOAD_DELAY=5
+poetry run scrapy crawl direito_penal -s DOWNLOAD_DELAY=5
 ```
 
 ## 📊 Data Output
