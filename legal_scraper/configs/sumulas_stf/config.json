@@ -1,0 +1,62 @@
+{
+  "name": "Súmulas STF",
+  "description": "Scraper for Brazilian Supreme Court (STF) binding and non-binding precedents",
+  "start_url": "https://portal.stf.jus.br/textos/verTexto.asp?servico=jurisprudenciaSumula",
+  "fallback_urls": [
+    "https://www.stf.jus.br/portal/cms/verTexto.asp?servico=jurisprudenciaSumula",
+    "https://stf.jus.br/portal/jurisprudencia/"
+  ],
+  "selectors": {
+    "container": ".sumula-lista, .lista-sumulas, .precedent-list",
+    "item": ".sumula-item, .item-sumula, .precedent-item",
+    "numero": ".numero, .sumula-numero, h3, h4",
+    "texto": ".texto, .enunciado, .sumula-texto, p",
+    "tipo": ".tipo, .categoria, .vinculante",
+    "tribunal": ".tribunal, .orgao",
+    "data_aprovacao": ".data-aprovacao, .data-publicacao, .date",
+    "link": "a[href*='sumula'], a[href*='precedent']",
+    "status": ".status, .situacao, .vigencia"
+  },
+  "pagination": {
+    "type": "none",
+    "selector": null,
+    "max_pages": 1
+  },
+  "filters": {
+    "tipos": [
+      "vinculante",
+      "comum",
+      "ordinária"
+    ],
+    "status": [
+      "vigente",
+      "cancelada",
+      "superada"
+    ]
+  },
+  "parsing": {
+    "extract_number": true,
+    "clean_text": true,
+    "detect_cancellation": true,
+    "detect_binding": true
+  },
+  "delays": {
+    "page_load": 5000,
+    "between_requests": 1000,
+    "retry_delay": 5000
+  },
+  "output": {
+    "format": "json",
+    "fields": [
+      "numero",
+      "texto",
+      "tipo",
+      "tribunal",
+      "data_aprovacao", 
+      "link",
+      "status",
+      "cancelada",
+      "scraped_at"
+    ]
+  }
+} 
