@@ -110,9 +110,10 @@ class BrazilianLegalSpiderBase(scrapy.Spider):
             'playwright_context': 'default',
             'playwright_page_methods': methods,
             'playwright_context_kwargs': {
-                'locale': 'pt-BR',
-                'timezone_id': 'America/Sao_Paulo',
                 'ignore_https_errors': True,
+                'extra_http_headers': {
+                    'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+                },
             },
             'playwright_include_page': True,
         }

@@ -35,8 +35,6 @@ TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 PLAYWRIGHT_BROWSER_TYPE = 'chromium'
 PLAYWRIGHT_LAUNCH_OPTIONS = {
     'headless': True,
-    'locale': 'pt-BR',
-    'timezone_id': 'America/Sao_Paulo',
     'args': [
         '--lang=pt-BR',
         '--accept-lang=pt-BR,pt;q=0.9,en;q=0.8',
@@ -57,15 +55,17 @@ PLAYWRIGHT_MAX_CONTEXTS = 8
 PLAYWRIGHT_CONTEXTS = {
     "default": {
         "viewport": {"width": 1280, "height": 800},
-        "locale": "pt-BR",
-        "timezone_id": "America/Sao_Paulo",
         "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "extra_http_headers": {
+            "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+        },
     },
     "stf": {
         "viewport": {"width": 1280, "height": 800},
-        "locale": "pt-BR",
-        "timezone_id": "America/Sao_Paulo",
         "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "extra_http_headers": {
+            "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+        },
     },
 }
 

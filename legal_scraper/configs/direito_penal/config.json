@@ -1,28 +1,28 @@
 {
   "name": "Direito Penal",
   "description": "Scraper for Brazilian criminal law content, decisions, and legislation",
-  "start_url": "https://stf.jus.br/portal/jurisprudencia/pesquisarJurisprudencia.asp",
+  "start_url": "https://www.tjsp.jus.br/",
   "fallback_urls": [
-    "https://portal.stf.jus.br/jurisprudencia/",
-    "https://stj.jus.br/sites/portalp/Paginas/Comunicacao/Noticias/Direito-Penal.aspx"
+    "https://www.tjrj.jus.br/",
+    "https://www.tjsp.jus.br/Institucional/CanaisComunicacao/Noticias/Noticia.aspx?Id=29080"
   ],
   "selectors": {
-    "container": ".resultado-busca, .item-jurisprudencia, .decision-item",
-    "item": ".jurisprudencia-item, .item-resultado, .decision-card",
-    "title": "h3, h4, .titulo, .ementa-titulo",
-    "date": ".data, .data-julgamento, .data-publicacao, time",
-    "court": ".tribunal, .orgao-julgador, .origem",
-    "case_number": ".numero-processo, .processo",
-    "summary": ".ementa, .resumo, .decisao-resumo",
-    "link": "a[href*='jurisprudencia'], a[href*='acordao']",
+    "container": "body, main, .container, .content-area, .main-content",
+    "item": "a[href*='jurisprudencia'], a[href*='processo'], a[href*='decisao'], .noticia-item, .link-item",
+    "title": "h1, h2, h3, h4, .titulo, .title, .noticia-titulo",
+    "date": ".data, .data-publicacao, .data-noticia, time",
+    "court": ".tribunal, .orgao, .fonte",
+    "case_number": ".numero, .processo-numero",
+    "summary": ".resumo, .texto, .descricao, .content",
+    "link": "a[href*='jurisprudencia'], a[href*='processo'], a[href*='decisao'], a[href*='noticia']",
     "pdf_link": "a[href$='.pdf'], a[title*='PDF']",
-    "relator": ".relator, .ministro",
-    "type": ".tipo, .classe, .natureza"
+    "relator": ".relator, .autor, .responsavel",
+    "type": ".tipo, .categoria, .secao"
   },
   "pagination": {
     "type": "button",
-    "selector": ".proxima, .next, [aria-label*='próxima']",
-    "max_pages": 10
+    "selector": ".proxima, .next, .proximo, .paginacao a:last-child",
+    "max_pages": 3
   },
   "filters": {
     "search_terms": [
@@ -39,9 +39,9 @@
     }
   },
   "delays": {
-    "page_load": 3000,
-    "between_requests": 2000,
-    "retry_delay": 5000
+    "page_load": 2000,
+    "between_requests": 1000,
+    "retry_delay": 3000
   },
   "output": {
     "format": "json",
