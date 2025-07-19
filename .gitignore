@@ -163,11 +163,11 @@ cython_debug/
 .vscode/
 
 # Scraped data (optional - uncomment if you don't want to track scraped data)
-# scraper/data/*/
+scraper/data/*/
 
 # Scraped logs (optional - uncomment if you don't want to track logs)
-# logs/
-# scraper/logs/
+logs/
+scraper/logs/
 
 # Playwright browsers and cache
 .playwright/
@@ -189,3 +189,7 @@ Thumbs.db
 *.swp
 *.swo
 *~ 
+# Legal scraper temporary files
+legal_scraper/data/
+legal_scraper/logs/
+legal_scraper/httpcache/
