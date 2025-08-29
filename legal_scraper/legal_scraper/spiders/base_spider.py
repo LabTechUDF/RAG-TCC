@@ -77,27 +77,29 @@ class BrazilianLegalSpiderBase(scrapy.Spider):
             PageMethod('wait_for_timeout', self.config.get('delays', {}).get('page_load', 3000)),
             # Handle LGPD consent banners common in Brazilian sites
             PageMethod('evaluate', '''
-                // Handle common LGPD consent banners
-                const consentSelectors = [
-                    '[data-consent="accept"]',
-                    '.accept-cookies',
-                    '.lgpd-accept',
-                    '.cookie-accept',
-                    '[onclick*="accept"]',
-                    'button[id*="consent"]',
-                    'button[class*="accept"]'
-                ];
-                
-                for (const selector of consentSelectors) {
-                    const btn = document.querySelector(selector);
-                    if (btn && btn.offsetParent !== null) {
-                        btn.click();
-                        break;
+                (async () => {
+                    // Handle common LGPD consent banners
+                    const consentSelectors = [
+                        '[data-consent="accept"]',
+                        '.accept-cookies',
+                        '.lgpd-accept',
+                        '.cookie-accept',
+                        '[onclick*="accept"]',
+                        'button[id*="consent"]',
+                        'button[class*="accept"]'
+                    ];
+                    
+                    for (const selector of consentSelectors) {
+                        const btn = document.querySelector(selector);
+                        if (btn && btn.offsetParent !== null) {
+                            btn.click();
+                            break;
+                        }
                     }
-                }
-                
-                // Wait a bit for consent processing
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    // Wait a bit for consent processing
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                })();
             '''),
         ]
         

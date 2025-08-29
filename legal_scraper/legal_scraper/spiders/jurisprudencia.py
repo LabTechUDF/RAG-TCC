@@ -2,6 +2,9 @@
 Jurisprudencia spider for Brazilian court decisions and case law
 """
 
+import re
+from datetime import datetime
+from pathlib import Path
 from .base_spider import BrazilianLegalSpiderBase
 from scrapy_playwright.page import PageMethod
 
@@ -11,11 +14,8 @@ class JurisprudenciaSpider(BrazilianLegalSpiderBase):
     
     name = 'jurisprudencia'
     allowed_domains = [
-        'stj.jus.br',
-        'portal.stf.jus.br', 
-        'tjsp.jus.br',
-        'tjrj.jus.br',
-        'tribunais.jus.br'
+        'jurisprudencia.stf.jus.br',
+        'portal.stf.jus.br'
     ]
     
     def get_playwright_meta(self, extra_methods=None):
@@ -26,22 +26,24 @@ class JurisprudenciaSpider(BrazilianLegalSpiderBase):
         extra_methods.extend([
             # Handle search forms that might be present
             PageMethod('evaluate', '''
-                // Fill search form if present
-                const searchInput = document.querySelector('input[name*="search"], input[id*="search"], input[placeholder*="pesquisar"]');
-                if (searchInput) {
-                    searchInput.value = "jurisprudência OR acórdão OR decisão";
-                    
-                    // Try to submit the form
-                    const submitBtn = document.querySelector('button[type="submit"], input[type="submit"], .btn-search');
-                    if (submitBtn) {
-                        submitBtn.click();
-                        await new Promise(resolve => setTimeout(resolve, 2000));
+                (async () => {
+                    // Fill search form if present
+                    const searchInput = document.querySelector('input[name*="search"], input[id*="search"], input[placeholder*="pesquisar"]');
+                    if (searchInput) {
+                        searchInput.value = "jurisprudência OR acórdão OR decisão";
+                        
+                        // Try to submit the form
+                        const submitBtn = document.querySelector('button[type="submit"], input[type="submit"], .btn-search');
+                        if (submitBtn) {
+                            submitBtn.click();
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                        }
                     }
-                }
+                })();
             '''),
             
-            # Wait for results to load
-            PageMethod('wait_for_selector', '.resultado-pesquisa, .jurisprudencia-lista, .search-results, .item-jurisprudencia', timeout=15000),
+            # Wait for results to load - support both STF and other court formats
+            PageMethod('wait_for_selector', '.resultado-pesquisa, .jurisprudencia-lista, .search-results, .item-jurisprudencia, div[id^="result-index-"]', timeout=15000),
         ])
         
         return super().get_playwright_meta(extra_methods)

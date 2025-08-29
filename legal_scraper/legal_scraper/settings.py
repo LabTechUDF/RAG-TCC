@@ -34,7 +34,7 @@ TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 
 PLAYWRIGHT_BROWSER_TYPE = 'chromium'
 PLAYWRIGHT_LAUNCH_OPTIONS = {
-    'headless': True,
+    'headless': True,  # Can be overridden by spider settings
     'args': [
         '--lang=pt-BR',
         '--accept-lang=pt-BR,pt;q=0.9,en;q=0.8',
@@ -76,8 +76,8 @@ PLAYWRIGHT_ABORT_REQUEST = lambda request: request.resource_type in ["image", "s
 # BRAZILIAN LEGAL SITES POLITENESS
 # ========================================
 
-# Obey robots.txt rules for Brazilian legal sites
-ROBOTSTXT_OBEY = True
+# Obey robots.txt rules for Brazilian legal sites (disabled for legal research)
+ROBOTSTXT_OBEY = False
 
 # Configure a delay for requests (be respectful to legal sites)
 DOWNLOAD_DELAY = 2
@@ -91,8 +91,8 @@ CONCURRENT_REQUESTS_PER_DOMAIN = 2
 # USER AGENT AND HEADERS
 # ========================================
 
-# User agent for Brazilian legal content scraping
-USER_AGENT = 'legal_scraper (+https://exemplo.com.br/bot)'
+# User agent for Brazilian legal content scraping (realistic browser)
+USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
 # Default request headers
 DEFAULT_REQUEST_HEADERS = {

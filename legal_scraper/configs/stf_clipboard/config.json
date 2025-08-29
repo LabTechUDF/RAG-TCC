@@ -1,0 +1,44 @@
+{
+  "name": "STF Clipboard & PDF Extractor",
+  "description": "Focused spider for extracting clipboard content and PDFs from STF decisões monocráticas",
+  "start_url": "https://jurisprudencia.stf.jus.br/pages/search?base=decisoes&pesquisa_inteiro_teor=false&sinonimo=true&plural=true&radicais=false&buscaExata=true&page=1&pageSize=250&queryString=%22estelionato%20previdenci%C3%A1rio%22%20%22(artigo%20ou%20art)%20171%20%C2%A73%22~3%20natureza&sort=_score&sortBy=desc",
+  "target": {
+    "site": "jurisprudencia.stf.jus.br",
+    "focus": "clipboard_content_and_pdfs",
+    "content_type": "decisoes_monocraticas"
+  },
+  "extraction": {
+    "primary": "clipboard_content",
+    "secondary": "pdf_download_links",
+    "metadata": ["case_number", "title", "relator", "decision_date"]
+  },
+  "selectors": {
+    "result_container": "div[id^='result-index-']",
+    "clipboard_link": "a[id^='clipboard-']",
+    "processo_link": "a[href*='processos/listarProcessos.asp']",
+    "title": "h2, h3, .titulo-decisao, .ementa",
+    "case_number": ".numero-processo, .processo, .case-number",
+    "pdf_link": "a[href$='.pdf'], a[title*='PDF'], a[href*='pdf'], a[href*='downloadPeca.asp']",
+    "relator": ".relator, .ministro",
+    "decision_date": ".data-julgamento, .data-decisao"
+  },
+  "delays": {
+    "page_load": 4000,
+    "between_requests": 3000,
+    "clipboard_extraction": 3000
+  },
+  "output": {
+    "format": "json",
+    "fields": [
+      "title",
+      "case_number", 
+      "clipboard_content",
+      "pdf_links",
+      "relator",
+      "decision_date",
+      "source_url",
+      "content_quality",
+      "scraped_at"
+    ]
+  }
+}

@@ -18,6 +18,7 @@ class LegalScraperManager:
         self.project_root = Path(__file__).parent
         self.available_spiders = [
             'jurisprudencia',
+            'stf_clipboard',  # New focused STF spider
             'sumulas_stf', 
             'normativas_stj',
             'direito_penal',
@@ -43,7 +44,7 @@ class LegalScraperManager:
                 print(f"  🕷️  {spider:<20} - Config not found")
         print()
     
-    def run_spider(self, spider_name, dry_run=False, max_pages=None, output_format='json'):
+    def run_spider(self, spider_name, dry_run=False, max_pages=None, output_format='json', show_browser=False):
         """Run a specific spider"""
         if spider_name not in self.available_spiders:
             print(f"❌ Error: Spider '{spider_name}' not found.")
@@ -53,9 +54,11 @@ class LegalScraperManager:
         print(f"🚀 Running {spider_name} spider...")
         if dry_run:
             print("🔍 DRY RUN MODE - No data will be saved")
+        if show_browser:
+            print("👀 BROWSER VISIBLE - You can watch the scraping process")
         
         # Build scrapy command
-        cmd = ['python3', '-m', 'scrapy', 'crawl', spider_name]
+        cmd = ['poetry', 'run', 'scrapy', 'crawl', spider_name]
         
         # Add custom settings
         if dry_run:
@@ -63,6 +66,10 @@ class LegalScraperManager:
         
         if max_pages:
             cmd.extend(['-s', f'CLOSESPIDER_PAGECOUNT={max_pages}'])
+        
+        # Control browser visibility
+        if show_browser:
+            cmd.extend(['-s', 'PLAYWRIGHT_LAUNCH_OPTIONS={"headless":false}'])
         
         # Set output format
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -94,7 +101,7 @@ class LegalScraperManager:
             print(f"\n⏹️  Spider {spider_name} interrupted by user")
             return False
     
-    def run_all_spiders(self, dry_run=False, max_pages=None):
+    def run_all_spiders(self, dry_run=False, max_pages=None, show_browser=False):
         """Run all available spiders"""
         print("🚀 Running ALL Brazilian Legal Scrapers...")
         print("=" * 50)
@@ -104,7 +111,7 @@ class LegalScraperManager:
         
         for spider in self.available_spiders:
             print(f"\n📋 Starting {spider}...")
-            success = self.run_spider(spider, dry_run=dry_run, max_pages=max_pages)
+            success = self.run_spider(spider, dry_run=dry_run, max_pages=max_pages, show_browser=show_browser)
             results[spider] = success
         
         # Print summary
@@ -256,15 +263,17 @@ Examples:
     
     # Run command
     run_parser = subparsers.add_parser('run', help='Run a specific spider')
-    run_parser.add_argument('spider', choices=['jurisprudencia', 'sumulas_stf', 'normativas_stj', 'direito_penal', 'tribunais_estaduais'])
+    run_parser.add_argument('spider', choices=['jurisprudencia', 'stf_clipboard', 'sumulas_stf', 'normativas_stj', 'direito_penal', 'tribunais_estaduais'])
     run_parser.add_argument('--dry-run', action='store_true', help='Run without saving data')
     run_parser.add_argument('--max-pages', type=int, help='Maximum pages to scrape')
     run_parser.add_argument('--format', choices=['json', 'csv'], default='json', help='Output format')
+    run_parser.add_argument('--show-browser', action='store_true', help='Show browser window (disable headless mode)')
     
     # Run all command
     run_all_parser = subparsers.add_parser('run-all', help='Run all spiders')
     run_all_parser.add_argument('--dry-run', action='store_true', help='Run without saving data')
     run_all_parser.add_argument('--max-pages', type=int, help='Maximum pages to scrape per spider')
+    run_all_parser.add_argument('--show-browser', action='store_true', help='Show browser window (disable headless mode)')
     
     # Stats command
     subparsers.add_parser('stats', help='Show scraping statistics')
@@ -293,13 +302,15 @@ Examples:
                 args.spider, 
                 dry_run=args.dry_run,
                 max_pages=args.max_pages,
-                output_format=args.format
+                output_format=args.format,
+                show_browser=args.show_browser
             )
         
         elif args.command == 'run-all':
             manager.run_all_spiders(
                 dry_run=args.dry_run,
-                max_pages=args.max_pages
+                max_pages=args.max_pages,
+                show_browser=args.show_browser
             )
         
         elif args.command == 'stats':
