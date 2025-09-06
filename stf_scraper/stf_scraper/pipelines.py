@@ -15,7 +15,7 @@ import logging
 
 
 class ValidationPipeline:
-    """Validate scraped legal documents"""
+    """Validate scraped legal documents and assess content quality"""
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)
@@ -40,17 +40,77 @@ class ValidationPipeline:
         if case_number and not self.validate_case_number(case_number):
             self.logger.warning(f"Invalid case number format: {case_number}")
         
-        # Validate content quality
-        content = adapter.get('content', '')
-        title = adapter.get('title', '')
+        # Assess content quality based on key fields
+        quality_score = self.calculate_content_quality(adapter)
+        adapter['content_quality'] = quality_score
         
-        if len(content) < 50 and len(title) < 10:
-            raise DropItem(f"Content too short, might be extraction error")
-        
-        # Add content quality score
-        adapter['content_quality'] = self.calculate_quality_score(adapter)
+        # Drop items with very low quality
+        if quality_score < 30:
+            raise DropItem(f"Content quality too low ({quality_score}/100): {adapter.get('title', 'No title')}")
         
         return item
+    
+    def calculate_content_quality(self, adapter):
+        """Calculate content quality based on URL, relator, title with legal acronyms, and content"""
+        score = 0
+        
+        # URL quality (25 points) - Must be jurisprudencia.stf.jus.br
+        url = adapter.get('url', '')
+        if 'jurisprudencia.stf.jus.br' in url:
+            score += 25
+        elif 'stf.jus.br' in url:
+            score += 15
+        elif url.startswith('https://'):
+            score += 10
+        elif url.startswith('http://'):
+            score += 5
+        
+        # Relator quality (25 points) - Judge name present and valid
+        relator = adapter.get('relator', '')
+        if relator:
+            if len(relator) > 5 and any(char.isupper() for char in relator):
+                score += 25
+            elif len(relator) > 2:
+                score += 15
+            else:
+                score += 5
+        
+        # Title quality (25 points) - Must contain legal decision acronyms
+        title = adapter.get('title', '')
+        legal_acronyms = ['HC', 'ARE', 'RE', 'RHC', 'MC']
+        if title:
+            # Check if title contains any legal acronyms
+            title_upper = title.upper()
+            has_acronym = any(acronym in title_upper for acronym in legal_acronyms)
+            
+            if has_acronym and len(title) > 15:
+                score += 25
+            elif has_acronym and len(title) > 5:
+                score += 20
+            elif len(title) > 30:
+                score += 15
+            elif len(title) > 15:
+                score += 10
+            elif len(title) > 5:
+                score += 5
+        
+        # Content quality (25 points) - Real content present, not placeholder
+        content = adapter.get('content', '')
+        if content:
+            content_clean = content.strip()
+            # Check for meaningful content length and structure
+            if len(content_clean) > 500 and 'Relator' in content and 'Julgamento' in content:
+                score += 25
+            elif len(content_clean) > 200 and any(word in content for word in ['Decisão', 'Relator', 'Min.']):
+                score += 20
+            elif len(content_clean) > 100:
+                score += 15
+            elif len(content_clean) > 50:
+                score += 10
+            elif len(content_clean) > 10:
+                score += 5
+        
+        return min(score, 100)
     
     def is_valid_url(self, url):
         """Validate URL format"""
@@ -70,40 +130,6 @@ class ValidationPipeline:
         # Pattern: 0000000-00.0000.0.00.0000
         pattern = r'^\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}$'
         return bool(re.match(pattern, case_number))
-    
-    def calculate_quality_score(self, adapter):
-        """Calculate content quality score (0-100)"""
-        score = 0
-        
-        # Title quality (20 points)
-        title = adapter.get('title', '')
-        if len(title) > 20:
-            score += 10
-        if len(title) > 50:
-            score += 10
-        
-        # Content quality (40 points)
-        content = adapter.get('content', '')
-        if len(content) > 100:
-            score += 10
-        if len(content) > 500:
-            score += 10
-        if len(content) > 1000:
-            score += 10
-        if len(content) > 2000:
-            score += 10
-        
-        # Metadata quality (40 points)
-        if adapter.get('publication_date'):
-            score += 10
-        if adapter.get('case_number'):
-            score += 10
-        if adapter.get('tribunal'):
-            score += 10
-        if adapter.get('legal_area'):
-            score += 10
-        
-        return min(score, 100)
 
 
 class DuplicatesPipeline:
@@ -125,127 +151,39 @@ class DuplicatesPipeline:
             return item
 
 
-class BrazilianDatePipeline:
-    """Process and normalize Brazilian date formats"""
+class DateNormalizationPipeline:
+    """Convert Brazilian DD/MM/YYYY dates to ISO format YYYY-MM-DD"""
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.month_names = {
-            'janeiro': '01', 'jan': '01',
-            'fevereiro': '02', 'fev': '02',
-            'março': '03', 'mar': '03',
-            'abril': '04', 'abr': '04',
-            'maio': '05', 'mai': '05',
-            'junho': '06', 'jun': '06',
-            'julho': '07', 'jul': '07',
-            'agosto': '08', 'ago': '08',
-            'setembro': '09', 'set': '09',
-            'outubro': '10', 'out': '10',
-            'novembro': '11', 'nov': '11',
-            'dezembro': '12', 'dez': '12',
-        }
     
     def process_item(self, item, spider):
         adapter = ItemAdapter(item)
         
-        # Process publication_date
+        # Convert publication_date from DD/MM/YYYY to YYYY-MM-DD
         pub_date = adapter.get('publication_date')
-        if pub_date:
-            adapter['publication_date'] = self.normalize_date(pub_date)
+        if pub_date and self.is_brazilian_date_format(pub_date):
+            adapter['publication_date'] = self.convert_to_iso_date(pub_date)
         
-        # Process decision_date
+        # Convert decision_date from DD/MM/YYYY to YYYY-MM-DD
         dec_date = adapter.get('decision_date')
-        if dec_date:
-            adapter['decision_date'] = self.normalize_date(dec_date)
-        
-        # Add scraped_at timestamp
-        adapter['scraped_at'] = datetime.now().isoformat()
+        if dec_date and self.is_brazilian_date_format(dec_date):
+            adapter['decision_date'] = self.convert_to_iso_date(dec_date)
         
         return item
     
-    def normalize_date(self, date_str):
-        """Normalize Brazilian date formats to ISO format"""
-        if not date_str:
-            return None
-        
-        # Clean the date string
-        date_str = date_str.strip().lower()
-        
-        # Try different date patterns
-        patterns = [
-            # DD/MM/YYYY
-            (r'(\d{1,2})/(\d{1,2})/(\d{4})', lambda m: f"{m.group(3)}-{m.group(2).zfill(2)}-{m.group(1).zfill(2)}"),
-            # DD-MM-YYYY
-            (r'(\d{1,2})-(\d{1,2})-(\d{4})', lambda m: f"{m.group(3)}-{m.group(2).zfill(2)}-{m.group(1).zfill(2)}"),
-            # DD de MONTH de YYYY
-            (r'(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})', self.parse_textual_date),
-            # YYYY-MM-DD (already ISO)
-            (r'(\d{4})-(\d{1,2})-(\d{1,2})', lambda m: f"{m.group(1)}-{m.group(2).zfill(2)}-{m.group(3).zfill(2)}"),
-        ]
-        
-        for pattern, converter in patterns:
-            match = re.search(pattern, date_str)
-            if match:
-                try:
-                    return converter(match)
-                except Exception as e:
-                    self.logger.warning(f"Error parsing date '{date_str}': {e}")
-                    continue
-        
-        self.logger.warning(f"Could not parse date: {date_str}")
-        return date_str  # Return original if can't parse
+    def is_brazilian_date_format(self, date_str):
+        """Check if date is in DD/MM/YYYY format"""
+        return bool(re.match(r'^\d{2}/\d{2}/\d{4}$', date_str))
     
-    def parse_textual_date(self, match):
-        """Parse textual date like '15 de dezembro de 2023'"""
-        day = match.group(1).zfill(2)
-        month_name = match.group(2).lower()
-        year = match.group(3)
-        
-        month = self.month_names.get(month_name)
-        if not month:
-            raise ValueError(f"Unknown month: {month_name}")
-        
-        return f"{year}-{month}-{day}"
-
-
-class JsonWriterPipeline:
-    """Write items to JSON files organized by theme"""
-    
-    def __init__(self):
-        self.files = {}
-        self.exporters = {}
-        self.logger = logging.getLogger(__name__)
-    
-    def open_spider(self, spider):
-        """Initialize JSON exporters for each theme"""
-        pass
-    
-    def close_spider(self, spider):
-        """Close all open files"""
-        for exporter in self.exporters.values():
-            exporter.finish_exporting()
-        for file in self.files.values():
-            file.close()
-    
-    def process_item(self, item, spider):
-        adapter = ItemAdapter(item)
-        theme = adapter.get('theme', 'unknown')
-        
-        # Create directory if it doesn't exist
-        data_dir = Path(f"data/{theme}")
-        data_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Create filename with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d")
-        filename = data_dir / f"{theme}_{timestamp}.jsonl"
-        
-        # Write item to JSONL file
-        with open(filename, 'a', encoding='utf-8') as f:
-            item_dict = dict(adapter)
-            json.dump(item_dict, f, ensure_ascii=False, default=str)
-            f.write('\n')
-        
-        return item
+    def convert_to_iso_date(self, date_str):
+        """Convert DD/MM/YYYY to YYYY-MM-DD"""
+        try:
+            day, month, year = date_str.split('/')
+            return f"{year}-{month}-{day}"
+        except Exception as e:
+            self.logger.warning(f"Failed to convert date {date_str}: {e}")
+            return date_str  # Return original if conversion fails
 
 
 class StatisticsPipeline:
@@ -261,6 +199,9 @@ class StatisticsPipeline:
             'total_items': 0,
             'items_by_theme': {},
             'items_by_quality': {'high': 0, 'medium': 0, 'low': 0},
+            'items_by_classe': {},
+            'items_with_relator': 0,
+            'items_with_content': 0,
             'start_time': datetime.now()
         }
     
@@ -274,6 +215,9 @@ class StatisticsPipeline:
         self.logger.info(f"Duration: {self.stats['duration']:.2f} seconds")
         self.logger.info(f"Items by theme: {self.stats['items_by_theme']}")
         self.logger.info(f"Items by quality: {self.stats['items_by_quality']}")
+        self.logger.info(f"Items by classe processual: {self.stats['items_by_classe']}")
+        self.logger.info(f"Items with relator: {self.stats['items_with_relator']}")
+        self.logger.info(f"Items with content: {self.stats['items_with_content']}")
         
         # Save statistics to file
         stats_file = Path("data/scraping_stats.json")
@@ -295,7 +239,7 @@ class StatisticsPipeline:
         theme = adapter.get('theme', 'unknown')
         self.stats['items_by_theme'][theme] = self.stats['items_by_theme'].get(theme, 0) + 1
         
-        # Count by quality
+        # Count by quality score
         quality_score = adapter.get('content_quality', 0)
         if quality_score >= 80:
             self.stats['items_by_quality']['high'] += 1
@@ -303,5 +247,18 @@ class StatisticsPipeline:
             self.stats['items_by_quality']['medium'] += 1
         else:
             self.stats['items_by_quality']['low'] += 1
+        
+        # Count by classe processual
+        classe = adapter.get('classe_processual_unificada', 'unknown')
+        self.stats['items_by_classe'][classe] = self.stats['items_by_classe'].get(classe, 0) + 1
+        
+        # Count items with relator
+        if adapter.get('relator'):
+            self.stats['items_with_relator'] += 1
+            
+        # Count items with meaningful content
+        content = adapter.get('content', '')
+        if content and len(content.strip()) > 50:
+            self.stats['items_with_content'] += 1
         
         return item

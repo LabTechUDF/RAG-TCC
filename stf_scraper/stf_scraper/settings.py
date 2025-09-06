@@ -137,7 +137,7 @@ RETRY_PRIORITY_ADJUST = -1
 ITEM_PIPELINES = {
     'stf_scraper.pipelines.ValidationPipeline': 300,
     'stf_scraper.pipelines.DuplicatesPipeline': 400,
-    'stf_scraper.pipelines.BrazilianDatePipeline': 500,
+    'stf_scraper.pipelines.DateNormalizationPipeline': 500,
     # 'stf_scraper.pipelines.JsonWriterPipeline': 600,  # Disabled - using FEEDS instead
     'stf_scraper.pipelines.StatisticsPipeline': 700,
 }
@@ -187,10 +187,10 @@ FEEDS = {
         'encoding': 'utf8',
         'store_empty': False,
         'fields': [
-            'theme', 'title', 'case_number', 'content', 'url', 'source_site',
-            'tribunal', 'court_level', 'document_type', 'legal_area', 
-            'scraped_at', 'keywords', 'content_quality', 'publication_date',
-            'judge_rapporteur', 'subject_matter'
+            'theme', 'title', 'case_number', 'classe_processual_unificada', 
+            'content', 'url', 'tribunal', 'legal_area',
+            'relator', 'decision_type', 'publication_date', 'decision_date',
+            'content_quality'
         ],
         'item_export_kwargs': {
             'ensure_ascii': False,

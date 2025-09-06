@@ -10,7 +10,13 @@ from datetime import datetime
 from pathlib import Path
 from scrapy.exceptions import CloseSpider
 from scrapy_playwright.page import PageMethod
-from stf_scraper.items import LegalDocumentItem
+from stf_scraper.items import (
+    JurisprudenciaItem, 
+    get_classe_processual_from_url,
+    extract_relator_from_content,
+    extract_publication_date_from_content,
+    extract_decision_date_from_content
+)
 # from pdb import set_trace
 
 
@@ -516,7 +522,7 @@ class StfJurisprudenciaSpider(scrapy.Spider):
 
     def create_item(self, item_data):
         """Create a legal document item"""
-        item = LegalDocumentItem()
+        item = JurisprudenciaItem()
 
         # Map data to item fields
         item['theme'] = 'stf_jurisprudencia'
@@ -524,52 +530,27 @@ class StfJurisprudenciaSpider(scrapy.Spider):
         item['case_number'] = item_data.get('case_number', '')
         item['content'] = item_data.get('clipboard_content', '')
         item['url'] = item_data.get('full_decision_data', '') or item_data.get('processo_link', '') or item_data.get('source_url', '')
-        item['source_site'] = item_data.get('source_url', '')
         item['tribunal'] = 'STF'
-        item['court_level'] = 'Supremo Tribunal Federal'
-        item['document_type'] = 'Decisão'
         item['legal_area'] = 'Penal'  # Based on search query
-        item['scraped_at'] = item_data.get('scraped_at')
+        
+        # Extract classe processual unificada from the search URL
+        search_url = getattr(self, 'start_urls', [''])[0] if hasattr(self, 'start_urls') else ''
+        item['classe_processual_unificada'] = get_classe_processual_from_url(search_url)
 
-        # Add the full decision data URL as a keyword for easy access
-        if item_data.get('full_decision_data'):
-            keywords = item_data.get('keywords', [])
-            if isinstance(keywords, str):
-                keywords = [keywords]
-            elif not isinstance(keywords, list):
-                keywords = []
-            keywords.append(f"full_decision_data:{item_data['full_decision_data']}")
-            item['keywords'] = keywords
-
-        # Add STF-specific metadata
-        if item_data.get('pdf_links'):
-            # Store PDF links in subject_matter field since it's a list field
-            item['subject_matter'] = item_data['pdf_links']
-
-        if item_data.get('relator'):
-            item['judge_rapporteur'] = item_data['relator']
-
-        if item_data.get('decision_date'):
-            item['publication_date'] = item_data['decision_date']
-
-        # Add content quality indicator
-        content_length = item_data.get('content_length', 0)
-        if content_length > 1000:
-            item['content_quality'] = 90
-        elif content_length > 500:
-            item['content_quality'] = 70
-        elif content_length > 100:
-            item['content_quality'] = 50
-        else:
-            item['content_quality'] = 20
+        # Extract fields from content
+        content = item_data.get('clipboard_content', '')
+        if content:
+            item['relator'] = extract_relator_from_content(content)
+            item['publication_date'] = extract_publication_date_from_content(content)
+            item['decision_date'] = extract_decision_date_from_content(content)
 
         # Increment the items counter
         self.items_extracted += 1
         
         if self.dev_mode:
-            self.logger.info(f"✅ DEV MODE: Created item {self.items_extracted}/{self.max_items}: {item.get('title', 'No title')}")
+            self.logger.info(f"✅ DEV MODE: Created item {self.items_extracted}/{self.max_items}: {item.get('title', 'No title')} - Classe: {item.get('classe_processual_unificada', 'Unknown')} - Relator: {item.get('relator', 'Unknown')}")
         else:
-            self.logger.info(f"✅ PROD MODE: Created item {self.items_extracted}: {item.get('title', 'No title')}")
+            self.logger.info(f"✅ PROD MODE: Created item {self.items_extracted}: {item.get('title', 'No title')} - Classe: {item.get('classe_processual_unificada', 'Unknown')} - Relator: {item.get('relator', 'Unknown')}")
         
         return item
 

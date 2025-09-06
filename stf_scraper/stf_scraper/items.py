@@ -4,11 +4,9 @@
 # https://docs.scrapy.org/en/latest/topics/items.html
 
 import scrapy
-from itemloaders.processors import TakeFirst, MapCompose, Compose
+from itemloaders.processors import TakeFirst, MapCompose
 from w3lib.html import remove_tags, strip_html5_whitespace
 import re
-from datetime import datetime
-
 
 def clean_text(text):
     """Clean text by removing extra whitespace and normalizing"""
@@ -23,35 +21,106 @@ def clean_text(text):
     return text.strip()
 
 
-def extract_case_number(text):
-    """Extract Brazilian legal case number from text"""
-    if not text:
-        return None
-    # Pattern for Brazilian case numbers: 0000000-00.0000.0.00.0000
-    pattern = r'(\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4})'
-    match = re.search(pattern, text)
-    return match.group(1) if match else None
-
-
-def normalize_url(url):
-    """Normalize and validate URLs"""
+def get_classe_processual_from_url(url):
+    """Extract classe processual unificada from STF URL"""
     if not url:
         return None
-    url = url.strip()
-    if not url.startswith(('http://', 'https://')):
+    
+    # Map of abbreviations to full names based on legend
+    classe_map = {
+        'HC': 'HABEAS CORPUS',
+        'ARE': 'RECURSO EXTRAORDINÁRIO COM AGRAVO', 
+        'RE': 'RECURSO EXTRAORDINÁRIO',
+        'RHC': 'RECURSO ORDINÁRIO EM HABEAS CORPUS',
+        'MC': 'MEDIDA CAUTELAR'
+    }
+    
+    # Extract from URL parameter processo_classe_processual_unificada_classe_sigla
+    pattern = r'processo_classe_processual_unificada_classe_sigla=([A-Z]+)'
+    match = re.search(pattern, url)
+    
+    if match:
+        sigla = match.group(1)
+        return classe_map.get(sigla, sigla)  # Return full name or abbreviation if not found
+    
+    return None
+
+
+def extract_relator_from_content(content):
+    """Extract relator (judge rapporteur) from content"""
+    if not content:
         return None
-    return url
+    
+    # Pattern to match "Relator(a): Min. NAME"
+    pattern = r'Relator\(a\):\s*Min\.\s*([A-ZÁÊÔÇÀÃÕÉ\s]+)'
+    match = re.search(pattern, content, re.IGNORECASE)
+    
+    if match:
+        return match.group(1).strip()
+    
+    return None
+
+
+def extract_publication_date_from_content(content):
+    """Extract publication date from content"""
+    if not content:
+        return None
+    
+    # Pattern to match "Publicação: DD/MM/YYYY"
+    pattern = r'Publicação:\s*(\d{2}/\d{2}/\d{4})'
+    match = re.search(pattern, content, re.IGNORECASE)
+    
+    if match:
+        return match.group(1)
+    
+    return None
+
+
+def extract_decision_date_from_content(content):
+    """Extract decision date from content"""
+    if not content:
+        return None
+    
+    # Pattern to match "Julgamento: DD/MM/YYYY"
+    pattern = r'Julgamento:\s*(\d{2}/\d{2}/\d{4})'
+    match = re.search(pattern, content, re.IGNORECASE)
+    
+    if match:
+        return match.group(1)
+    
+    return None
 
 
 class LegalDocumentItem(scrapy.Item):
     """Base item for Brazilian legal documents"""
     
-    # Theme and source information
+    # Core identification
     theme = scrapy.Field(
         output_processor=TakeFirst()
     )
     
-    source_site = scrapy.Field(
+    title = scrapy.Field(
+        input_processor=MapCompose(clean_text),
+        output_processor=TakeFirst()
+    )
+    
+    case_number = scrapy.Field(
+        output_processor=TakeFirst()
+    )
+    
+    # Brazilian legal process classification
+    classe_processual_unificada = scrapy.Field(
+        output_processor=TakeFirst()
+    )
+    
+    # Content
+    content = scrapy.Field(
+        input_processor=MapCompose(clean_text),
+        output_processor=TakeFirst()
+    )
+    
+    # Essential metadata
+    url = scrapy.Field(
         output_processor=TakeFirst()
     )
     
@@ -60,75 +129,8 @@ class LegalDocumentItem(scrapy.Item):
         output_processor=TakeFirst()
     )
     
-    # Document identification
-    title = scrapy.Field(
-        input_processor=MapCompose(clean_text),
-        output_processor=TakeFirst()
-    )
-    
-    case_number = scrapy.Field(
-        input_processor=MapCompose(extract_case_number),
-        output_processor=TakeFirst()
-    )
-    
-    document_type = scrapy.Field(
-        input_processor=MapCompose(clean_text),
-        output_processor=TakeFirst()
-    )
-    
-    # Content
-    summary = scrapy.Field(
-        input_processor=MapCompose(clean_text),
-        output_processor=TakeFirst()
-    )
-    
-    content = scrapy.Field(
-        input_processor=MapCompose(clean_text),
-        output_processor=TakeFirst()
-    )
-    
-    keywords = scrapy.Field(
-        input_processor=MapCompose(clean_text),
-        output_processor=list
-    )
-    
-    # Dates
-    publication_date = scrapy.Field(
-        output_processor=TakeFirst()
-    )
-    
-    decision_date = scrapy.Field(
-        output_processor=TakeFirst()
-    )
-    
-    # Legal specifics
     legal_area = scrapy.Field(
         input_processor=MapCompose(clean_text),
-        output_processor=TakeFirst()
-    )
-    
-    subject_matter = scrapy.Field(
-        input_processor=MapCompose(clean_text),
-        output_processor=list
-    )
-    
-    court_level = scrapy.Field(
-        input_processor=MapCompose(clean_text),
-        output_processor=TakeFirst()
-    )
-    
-    # URL and metadata
-    url = scrapy.Field(
-        input_processor=MapCompose(normalize_url),
-        output_processor=TakeFirst()
-    )
-    
-    scraped_at = scrapy.Field(
-        output_processor=TakeFirst()
-    )
-    
-    # Quality indicators
-    content_quality = scrapy.Field(
         output_processor=TakeFirst()
     )
 
@@ -136,9 +138,8 @@ class LegalDocumentItem(scrapy.Item):
 class JurisprudenciaItem(LegalDocumentItem):
     """Item for jurisprudence (court decisions)"""
     
-    # Court decision specifics
-    judge_rapporteur = scrapy.Field(
-        input_processor=MapCompose(clean_text),
+    # Court decision specifics - will be extracted from content in spider
+    relator = scrapy.Field(
         output_processor=TakeFirst()
     )
     
@@ -147,18 +148,17 @@ class JurisprudenciaItem(LegalDocumentItem):
         output_processor=TakeFirst()
     )
     
-    parties_involved = scrapy.Field(
-        input_processor=MapCompose(clean_text),
-        output_processor=list
-    )
-    
-    voting_result = scrapy.Field(
-        input_processor=MapCompose(clean_text),
+    # Dates specific to decisions - will be extracted from content in spider
+    publication_date = scrapy.Field(
         output_processor=TakeFirst()
     )
     
-    appeal_type = scrapy.Field(
-        input_processor=MapCompose(clean_text),
+    decision_date = scrapy.Field(
+        output_processor=TakeFirst()
+    )
+    
+    # Quality assessment score (calculated by pipeline)
+    content_quality = scrapy.Field(
         output_processor=TakeFirst()
     )
 
