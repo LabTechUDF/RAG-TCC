@@ -59,6 +59,7 @@ PLAYWRIGHT_CONTEXTS = {
         "extra_http_headers": {
             "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
         },
+        "permissions": ["clipboard-read", "clipboard-write"],
     },
     "stf": {
         "viewport": {"width": 1280, "height": 800},
@@ -66,6 +67,7 @@ PLAYWRIGHT_CONTEXTS = {
         "extra_http_headers": {
             "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
         },
+        "permissions": ["clipboard-read", "clipboard-write"],
     },
 }
 
