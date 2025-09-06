@@ -55,10 +55,10 @@ PLAYWRIGHT_DEFAULT_CONTEXT_OPTIONS = {
     "ignore_https_errors": True,  # Ignore HTTPS errors
 }
 
-# Playwright timeouts and optimization
+# Playwright timeouts and optimization for sequential processing
 PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT = 30000  # 30 seconds
-PLAYWRIGHT_MAX_PAGES_PER_CONTEXT = 4
-PLAYWRIGHT_MAX_CONTEXTS = 8
+PLAYWRIGHT_MAX_PAGES_PER_CONTEXT = 1  # Use only 1 page per context to prevent interference
+PLAYWRIGHT_MAX_CONTEXTS = 1  # Use only 1 context to prevent RTF download conflicts
 
 # Browser contexts for different legal sites
 PLAYWRIGHT_CONTEXTS = {
@@ -70,15 +70,6 @@ PLAYWRIGHT_CONTEXTS = {
         },
         "permissions": ["clipboard-read", "clipboard-write"],
         "accept_downloads": True,  # Enable file downloads
-    },
-    "stf": {
-        "viewport": {"width": 1280, "height": 800},
-        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "extra_http_headers": {
-            "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
-        },
-        "permissions": ["clipboard-read", "clipboard-write"],
-        "accept_downloads": True,  # Enable file downloads for STF
     },
 }
 
@@ -92,13 +83,13 @@ PLAYWRIGHT_ABORT_REQUEST = lambda request: request.resource_type in ["image", "s
 # Obey robots.txt rules for Brazilian legal sites (disabled for legal research)
 ROBOTSTXT_OBEY = False
 
-# Configure a delay for requests (be respectful to legal sites)
-DOWNLOAD_DELAY = 2
+# Configure a delay for requests (be respectful to legal sites and allow RTF processing)
+DOWNLOAD_DELAY = 5  # Increased delay to allow sequential RTF processing
 RANDOMIZE_DOWNLOAD_DELAY = 0.5
 
-# Limit concurrent requests to avoid overwhelming legal sites
-CONCURRENT_REQUESTS = 8
-CONCURRENT_REQUESTS_PER_DOMAIN = 2
+# Limit concurrent requests to avoid overwhelming legal sites and prevent RTF download interference
+CONCURRENT_REQUESTS = 1
+CONCURRENT_REQUESTS_PER_DOMAIN = 1  # Only 1 request per domain at a time
 
 # ========================================
 # USER AGENT AND HEADERS

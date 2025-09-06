@@ -470,7 +470,9 @@ class StfJurisprudenciaSpider(scrapy.Spider):
             self.logger.info(f"Extracted details - Partes: {'✅' if partes_text else '❌'}, Decision: {'✅' if decision_text else '❌'}, Legislacao: {'✅' if legislacao_text else '❌'}")
 
             # Now try to extract the RTF file by following the process tracking flow
+            self.logger.info(f"🔍 Before RTF extraction - rtf_url: {item_data.get('rtf_url', 'NOT_SET')}, rtf_file_path: {item_data.get('rtf_file_path', 'NOT_SET')}")
             await self.extract_rtf_file(page, item_data, response)
+            self.logger.info(f"🔍 After RTF extraction - rtf_url: {item_data.get('rtf_url', 'NOT_SET')}, rtf_file_path: {item_data.get('rtf_file_path', 'NOT_SET')}")
 
             yield self.yield_item_with_limit_check(item_data)
 
@@ -487,6 +489,7 @@ class StfJurisprudenciaSpider(scrapy.Spider):
 
     async def extract_rtf_file(self, page, item_data, response):
         """Extract RTF file by following the process tracking flow"""
+        
         try:
             self.logger.info("Starting RTF extraction process...")
 
@@ -615,11 +618,11 @@ class StfJurisprudenciaSpider(scrapy.Spider):
                             self.logger.info("Waiting for popup to appear...")
                             await dje_page.wait_for_selector('#conteudo-diario-processo', timeout=15000)
                             
-                            # Add visible 5 second sleep to ensure popup is fully loaded
-                            self.logger.info("Waiting 5 seconds for popup to fully load...")
-                            for second in range(5):
+                            # Add visible 8 second sleep to ensure popup is fully loaded
+                            self.logger.info("Waiting 8 seconds for popup to fully load...")
+                            for second in range(8):
                                 await dje_page.wait_for_timeout(1000)
-                                self.logger.info(f"  Waiting... {second + 1}/5 seconds")
+                                self.logger.info(f"  Waiting... {second + 1}/8 seconds")
                             
                             # Step 5: Find the RTF download link in the popup
                             rtf_link_selector = '#conteudo-diario-processo a[href*="verDecisao.asp"]'
@@ -654,6 +657,7 @@ class StfJurisprudenciaSpider(scrapy.Spider):
                                     # Step 6: Download the RTF file
                                     await self.download_rtf_file(dje_page, rtf_url, item_data)
                                     rtf_downloaded = True
+                                    self.logger.info("✅ RTF file downloaded successfully")
                                 else:
                                     self.logger.warning(f"❌ RTF link found but no href attribute")
                             else:
@@ -770,6 +774,7 @@ class StfJurisprudenciaSpider(scrapy.Spider):
                         item_data['rtf_file_path'] = str(file_path)
                         item_data['rtf_url'] = rtf_url
                         self.logger.info(f"🎉 RTF file successfully downloaded: {file_path} ({file_size} bytes)")
+                        self.logger.info(f"📝 Updated item_data - rtf_url: {item_data['rtf_url']}, rtf_file_path: {item_data['rtf_file_path']}")
                         return
                     else:
                         self.logger.error(f"❌ File not found after save: {file_path}")
@@ -813,6 +818,7 @@ class StfJurisprudenciaSpider(scrapy.Spider):
                             item_data['rtf_file_path'] = str(suggested_path)
                             item_data['rtf_url'] = rtf_url
                             self.logger.info(f"🎉 RTF file downloaded with existing page: {suggested_path} ({file_size} bytes)")
+                            self.logger.info(f"📝 Updated item_data (method 2) - rtf_url: {item_data['rtf_url']}, rtf_file_path: {item_data['rtf_file_path']}")
                             return
                         else:
                             self.logger.error(f"❌ File not found: {suggested_path}")
