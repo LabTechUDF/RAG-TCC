@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 export PATH="$HOME/Library/Python/3.12/bin:$PATH"
 
 print_help() {
-    echo -e "${BLUE}🇧🇷 Brazilian Legal Scraper - Development Commands${NC}"
+    echo -e "${BLUE}�️ STF Legal Scraper - Development Commands${NC}"
     echo "=================================================="
     echo ""
     echo "Usage: ./scripts/dev.sh <command>"
@@ -22,8 +22,8 @@ print_help() {
     echo "Available commands:"
     echo -e "  ${GREEN}install${NC}     Install dependencies with Poetry"
     echo -e "  ${GREEN}shell${NC}       Activate Poetry shell"
-    echo -e "  ${GREEN}list${NC}        List available scrapers"
-    echo -e "  ${GREEN}test${NC}        Run dry-run test for all scrapers"
+    echo -e "  ${GREEN}list${NC}        List available STF scrapers"
+    echo -e "  ${GREEN}test${NC}        Run dry-run test for STF scrapers"
     echo -e "  ${GREEN}lint${NC}        Run code linting (black, isort, flake8)"
     echo -e "  ${GREEN}format${NC}      Format code with black and isort"
     echo -e "  ${GREEN}run${NC}         Run specific scraper (usage: ./dev.sh run <spider> [args])"
@@ -32,7 +32,8 @@ print_help() {
     echo ""
     echo "Examples:"
     echo "  ./scripts/dev.sh install"
-    echo "  ./scripts/dev.sh run jurisprudencia --dry-run"
+    echo "  ./scripts/dev.sh run stf_legal"
+    echo "  ./scripts/dev.sh run stf_legal -a query=\"homicídio doloso\""
     echo "  ./scripts/dev.sh test"
     echo "  ./scripts/dev.sh lint"
 }
@@ -54,8 +55,47 @@ case "$1" in
         ;;
     
     list)
-        echo -e "${BLUE}📚 Available scrapers:${NC}"
-        cd legal_scraper && poetry run python manage.py list
+        echo -e "${BLUE}📚 Available STF scrapers:${NC}"
+        cd stf_scraper && poetry run python manage.py list
+        ;;
+    
+    test)
+        echo -e "${BLUE}🧪 Running dry-run tests for STF scrapers...${NC}"
+        cd stf_scraper && poetry run python manage.py run stf_legal --dry-run
+        ;;
+    
+    lint)
+        echo -e "${BLUE}🔍 Running code linting...${NC}"
+        poetry run flake8 stf_scraper/
+        echo -e "${GREEN}✅ Linting completed${NC}"
+        ;;
+    
+    format)
+        echo -e "${BLUE}🎨 Formatting code...${NC}"
+        poetry run black stf_scraper/
+        poetry run isort stf_scraper/
+        echo -e "${GREEN}✅ Code formatted${NC}"
+        ;;
+    
+    run)
+        if [ -z "$2" ]; then
+            echo -e "${RED}❌ Error: Please specify a spider name${NC}"
+            echo "Usage: ./dev.sh run <spider> [args]"
+            exit 1
+        fi
+        
+        echo -e "${BLUE}🚀 Running $2 spider...${NC}"
+        cd stf_scraper && poetry run python manage.py run "${@:2}"
+        ;;
+    
+    stats)
+        echo -e "${BLUE}📊 STF scraping statistics:${NC}"
+        cd stf_scraper && poetry run python manage.py stats
+        ;;
+    
+    clean)
+        echo -e "${BLUE}🧹 Cleaning data and cache...${NC}"
+        cd stf_scraper && poetry run python manage.py clean
         ;;
     
     test)
