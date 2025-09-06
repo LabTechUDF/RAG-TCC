@@ -5,8 +5,10 @@ STF Clipboard & PDF Spider - Focused on extracting clipboard content and PDFs fr
 import re
 import json
 import scrapy
+import os
 from datetime import datetime
 from pathlib import Path
+from scrapy.exceptions import CloseSpider
 from scrapy_playwright.page import PageMethod
 from stf_scraper.items import LegalDocumentItem
 # from pdb import set_trace
@@ -30,7 +32,45 @@ class StfClipboardSpider(scrapy.Spider):
         'CONCURRENT_REQUESTS_PER_DOMAIN': 1,  # Be gentle with STF
         'RETRY_TIMES': 3,
         'ROBOTSTXT_OBEY': False,
+        # Note: CLOSESPIDER_ITEMCOUNT will be set dynamically in __init__ based on dev mode
     }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Check if we're in development mode
+        # Can be set via environment variable or spider argument
+        self.dev_mode = (
+            kwargs.get('dev_mode', '').lower() in ['true', '1', 'yes'] or
+            os.getenv('SPIDER_DEV_MODE', '').lower() in ['true', '1', 'yes'] or
+            os.getenv('ENV', '').lower() in ['dev', 'development']
+        )
+        
+        if self.dev_mode:
+            self.items_extracted = 0
+            self.max_items = 5
+            self.logger.info("🚧 Running in DEVELOPMENT mode - limited to 5 items")
+            # Set the Scrapy built-in item count limit as backup
+            self.custom_settings['CLOSESPIDER_ITEMCOUNT'] = 5
+        else:
+            self.items_extracted = 0
+            self.max_items = None  # No limit in production
+            self.logger.info("🚀 Running in PRODUCTION mode - no item limit")
+            # Remove any item count limit
+            if 'CLOSESPIDER_ITEMCOUNT' in self.custom_settings:
+                del self.custom_settings['CLOSESPIDER_ITEMCOUNT']
+
+    def yield_item_with_limit_check(self, item_data):
+        """Yield an item and check if we've reached the extraction limit (only in dev mode)"""
+        item = self.create_item(item_data)
+        
+        # Only check limit in development mode
+        if self.dev_mode and self.max_items is not None:
+            if self.items_extracted >= self.max_items:
+                self.logger.info(f"🏁 DEV MODE: Reached maximum items limit ({self.max_items}). Closing spider.")
+                raise CloseSpider(f"DEV MODE: Reached maximum items limit: {self.max_items}")
+        
+        return item
 
     def start_requests(self):
         """Generate requests with STF-optimized Playwright settings"""
@@ -124,7 +164,15 @@ class StfClipboardSpider(scrapy.Spider):
 
             # Process each result item
             for i, item in enumerate(result_items):
-                self.logger.info(f"Processing item {i+1}/{len(result_items)}")
+                # Check if we've reached the maximum number of items (only in dev mode)
+                if self.dev_mode and self.max_items is not None and self.items_extracted >= self.max_items:
+                    self.logger.info(f"🛑 DEV MODE: Reached maximum items limit ({self.max_items}). Stopping spider.")
+                    break
+                
+                if self.dev_mode:
+                    self.logger.info(f"Processing item {i+1}/{len(result_items)} (DEV MODE: {self.items_extracted}/{self.max_items})")
+                else:
+                    self.logger.info(f"Processing item {i+1}/{len(result_items)} (PROD MODE: {self.items_extracted} extracted)")
 
                 # First, let's debug what elements we actually have in each item
                 item_html = item.get()
@@ -133,6 +181,61 @@ class StfClipboardSpider(scrapy.Spider):
                 # Log all links in this item for debugging
                 all_item_links = item.css('a::attr(href)').getall()
                 self.logger.info(f"Item {i+1} has {len(all_item_links)} links")
+                
+                # Extract the main decision data link and title based on the specific structure
+                # Looking for: <a mattooltip="Dados completos" ... href="/pages/search/despacho1583260/false">
+                #              <div class="ng-star-inserted"><h4 class="ng-star-inserted">RHC 247645</h4>
+                
+                decision_data_link = None
+                title = None
+                case_number_from_url = None
+                
+                # Extract decision data link with title
+                decision_link_selector = 'a[mattooltip="Dados completos"]'
+                decision_element = item.css(decision_link_selector)
+                
+                if decision_element:
+                    # Get the href for complete decision data
+                    decision_data_link = decision_element.css('::attr(href)').get()
+                    if decision_data_link:
+                        decision_data_link = decision_data_link.strip()
+                        self.logger.info(f"✅ Found decision data link: {decision_data_link}")
+                        
+                        # Extract case number from URL pattern /pages/search/%case_number%/false
+                        import re
+                        url_match = re.search(r'/pages/search/([^/]+)/false', decision_data_link)
+                        if url_match:
+                            case_number_from_url = url_match.group(1)
+                            self.logger.info(f"✅ Extracted case number from URL: {case_number_from_url}")
+                    
+                    # Get the title from h4 inside the link
+                    title_element = decision_element.css('div.ng-star-inserted h4.ng-star-inserted::text').get()
+                    if title_element:
+                        title = title_element.strip()
+                        self.logger.info(f"✅ Found title: {title}")
+                
+                # Fallback selectors if the main structure is not found
+                if not title:
+                    title_selectors = ['h2::text', 'h3::text', 'h4::text', '.titulo::text', '.ementa::text', '.title::text']
+                    for selector in title_selectors:
+                        title = item.css(selector).get()
+                        if title:
+                            title = title.strip()
+                            self.logger.debug(f"Found title with fallback selector {selector}: {title[:50]}...")
+                            break
+                
+                if not decision_data_link:
+                    # Fallback to any link that might contain decision data
+                    fallback_selectors = [
+                        'a[href*="/pages/search/"]::attr(href)',
+                        'a[href*="despacho"]::attr(href)',
+                        'a[href*="processo"]::attr(href)'
+                    ]
+                    for selector in fallback_selectors:
+                        decision_data_link = item.css(selector).get()
+                        if decision_data_link:
+                            self.logger.debug(f"Found decision link with fallback selector: {decision_data_link}")
+                            break
                 
                 # Extract clipboard button with multiple possible selectors
                 clipboard_selectors = [
@@ -157,26 +260,17 @@ class StfClipboardSpider(scrapy.Spider):
                     else:
                         self.logger.debug(f"No match for selector: {selector}")
 
-                # Extract basic info regardless of clipboard button
-                title_selectors = ['h2::text', 'h3::text', '.titulo::text', '.ementa::text', '.title::text']
-                title = None
-                for selector in title_selectors:
-                    title = item.css(selector).get()
-                    if title:
-                        title = title.strip()
-                        self.logger.debug(f"Found title with selector {selector}: {title[:50]}...")
-                        break
+                # Additional case number extraction for fallback
+                if not case_number_from_url:
+                    case_number_selectors = ['.numero-processo::text', '.processo::text', '.case-number::text', '[class*="numero"]::text']
+                    for selector in case_number_selectors:
+                        case_number = item.css(selector).get()
+                        if case_number:
+                            case_number_from_url = case_number.strip()
+                            self.logger.debug(f"Found case number with fallback: {case_number_from_url}")
+                            break
 
-                case_number_selectors = ['.numero-processo::text', '.processo::text', '.case-number::text', '[class*="numero"]::text']
-                case_number = None
-                for selector in case_number_selectors:
-                    case_number = item.css(selector).get()
-                    if case_number:
-                        case_number = case_number.strip()
-                        self.logger.debug(f"Found case number: {case_number}")
-                        break
-
-                # Extract processo detail link for PDF extraction later
+                # Extract processo detail link for PDF extraction later (keeping original logic)
                 processo_selectors = [
                     'a[href*="processos/listarProcessos.asp"]::attr(href)',
                     'a[href*="processo"]::attr(href)',
@@ -193,7 +287,8 @@ class StfClipboardSpider(scrapy.Spider):
                 # Create item data even if no clipboard button (for debugging)
                 item_data = {
                     'title': title or f"Item {i+1}",
-                    'case_number': case_number,
+                    'case_number': case_number_from_url,
+                    'full_decision_data': response.urljoin(decision_data_link) if decision_data_link else None,
                     'processo_link': response.urljoin(processo_link) if processo_link else None,
                     'source_url': response.url,
                     'scraped_at': datetime.now().isoformat(),
@@ -220,7 +315,7 @@ class StfClipboardSpider(scrapy.Spider):
                     item_data['extraction_method'] = 'fallback-no-clipboard'
                     
                     # Yield the item even without clipboard
-                    yield self.create_item(item_data)
+                    yield self.yield_item_with_limit_check(item_data)
                     continue
 
                 # Now click the clipboard button and extract the content directly
@@ -308,7 +403,8 @@ class StfClipboardSpider(scrapy.Spider):
                     
                     item_data = {
                         'title': title or f"Item {i+1}",
-                        'case_number': case_number,
+                        'case_number': case_number_from_url,
+                        'full_decision_data': response.urljoin(decision_data_link) if decision_data_link else None,
                         'processo_link': response.urljoin(processo_link) if processo_link else None,
                         'source_url': response.url,
                         'scraped_at': datetime.now().isoformat(),
@@ -329,7 +425,7 @@ class StfClipboardSpider(scrapy.Spider):
                         item_data['extraction_method'] = 'failed'
                     
                     # Always yield the item - validation pipeline will handle quality filtering
-                    yield self.create_item(item_data)
+                    yield self.yield_item_with_limit_check(item_data)
                     
                 except Exception as e:
                     self.logger.error(f"Error processing clipboard for item {i+1}: {e}")
@@ -407,12 +503,12 @@ class StfClipboardSpider(scrapy.Spider):
                     item_data['decision_date'] = decision_date.strip()
                     break
 
-            yield self.create_item(item_data)
+            yield self.yield_item_with_limit_check(item_data)
 
         except Exception as e:
             self.logger.error(f"Error extracting PDF links: {e}")
             # Still yield the item even if PDF extraction failed
-            yield self.create_item(item_data)
+            yield self.yield_item_with_limit_check(item_data)
 
         finally:
             if page:
@@ -427,7 +523,7 @@ class StfClipboardSpider(scrapy.Spider):
         item['title'] = item_data.get('title', f"STF Item {item_data.get('item_index', 'Unknown')}")
         item['case_number'] = item_data.get('case_number', '')
         item['content'] = item_data.get('clipboard_content', '')
-        item['url'] = item_data.get('processo_link', '') or item_data.get('source_url', '')
+        item['url'] = item_data.get('full_decision_data', '') or item_data.get('processo_link', '') or item_data.get('source_url', '')
         item['source_site'] = item_data.get('source_url', '')
         item['tribunal'] = 'STF'
         item['court_level'] = 'Supremo Tribunal Federal'
@@ -435,9 +531,20 @@ class StfClipboardSpider(scrapy.Spider):
         item['legal_area'] = 'Penal'  # Based on search query
         item['scraped_at'] = item_data.get('scraped_at')
 
+        # Add the full decision data URL as a keyword for easy access
+        if item_data.get('full_decision_data'):
+            keywords = item_data.get('keywords', [])
+            if isinstance(keywords, str):
+                keywords = [keywords]
+            elif not isinstance(keywords, list):
+                keywords = []
+            keywords.append(f"full_decision_data:{item_data['full_decision_data']}")
+            item['keywords'] = keywords
+
         # Add STF-specific metadata
         if item_data.get('pdf_links'):
-            item['keywords'] = item_data['pdf_links']  # Store PDF links in keywords field
+            # Store PDF links in subject_matter field since it's a list field
+            item['subject_matter'] = item_data['pdf_links']
 
         if item_data.get('relator'):
             item['judge_rapporteur'] = item_data['relator']
@@ -456,7 +563,14 @@ class StfClipboardSpider(scrapy.Spider):
         else:
             item['content_quality'] = 20
 
-        self.logger.info(f"Created item: {item.get('title', 'No title')}")
+        # Increment the items counter
+        self.items_extracted += 1
+        
+        if self.dev_mode:
+            self.logger.info(f"✅ DEV MODE: Created item {self.items_extracted}/{self.max_items}: {item.get('title', 'No title')}")
+        else:
+            self.logger.info(f"✅ PROD MODE: Created item {self.items_extracted}: {item.get('title', 'No title')}")
+        
         return item
 
     async def handle_error(self, failure):

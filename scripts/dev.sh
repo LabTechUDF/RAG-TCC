@@ -24,6 +24,8 @@ print_help() {
     echo -e "  ${GREEN}shell${NC}       Activate Poetry shell"
     echo -e "  ${GREEN}list${NC}        List available STF scrapers"
     echo -e "  ${GREEN}test${NC}        Run dry-run test for STF scrapers"
+    echo -e "  ${GREEN}dev${NC}         Run scraper in development mode (5 items limit)"
+    echo -e "  ${GREEN}prod${NC}        Run scraper in production mode (no limit)"
     echo -e "  ${GREEN}lint${NC}        Run code linting (black, isort, flake8)"
     echo -e "  ${GREEN}format${NC}      Format code with black and isort"
     echo -e "  ${GREEN}run${NC}         Run specific scraper (usage: ./dev.sh run <spider> [args])"
@@ -32,6 +34,8 @@ print_help() {
     echo ""
     echo "Examples:"
     echo "  ./scripts/dev.sh install"
+    echo "  ./scripts/dev.sh dev stf_clipboard"
+    echo "  ./scripts/dev.sh prod stf_clipboard"
     echo "  ./scripts/dev.sh run stf_legal"
     echo "  ./scripts/dev.sh run stf_legal -a query=\"homicídio doloso\""
     echo "  ./scripts/dev.sh test"
@@ -64,6 +68,32 @@ case "$1" in
         cd stf_scraper && poetry run python manage.py run stf_legal --dry-run
         ;;
     
+    dev)
+        if [ -z "$2" ]; then
+            echo -e "${RED}❌ Error: Please specify a spider name${NC}"
+            echo "Usage: ./dev.sh dev <spider>"
+            echo "Available spiders: stf_clipboard, stf_legal"
+            exit 1
+        fi
+        
+        echo -e "${BLUE}🚧 Running $2 spider in DEVELOPMENT mode (5 items limit)...${NC}"
+        cd stf_scraper && poetry run scrapy crawl "$2" -a dev_mode=true
+        echo -e "${GREEN}✅ Development run completed - check data/stf_clipboard/ for results${NC}"
+        ;;
+    
+    prod)
+        if [ -z "$2" ]; then
+            echo -e "${RED}❌ Error: Please specify a spider name${NC}"
+            echo "Usage: ./dev.sh prod <spider>"
+            echo "Available spiders: stf_clipboard, stf_legal"
+            exit 1
+        fi
+        
+        echo -e "${BLUE}🚀 Running $2 spider in PRODUCTION mode (no limit)...${NC}"
+        cd stf_scraper && poetry run scrapy crawl "$2"
+        echo -e "${GREEN}✅ Production run completed - check data/ for results${NC}"
+        ;;
+    
     lint)
         echo -e "${BLUE}🔍 Running code linting...${NC}"
         poetry run flake8 stf_scraper/
@@ -81,11 +111,15 @@ case "$1" in
         if [ -z "$2" ]; then
             echo -e "${RED}❌ Error: Please specify a spider name${NC}"
             echo "Usage: ./dev.sh run <spider> [args]"
+            echo "Available spiders: stf_clipboard, stf_legal"
+            echo ""
+            echo "Tip: Use './dev.sh dev <spider>' for development mode (5 items limit)"
+            echo "     Use './dev.sh prod <spider>' for production mode (no limit)"
             exit 1
         fi
         
-        echo -e "${BLUE}🚀 Running $2 spider...${NC}"
-        cd stf_scraper && poetry run python manage.py run "${@:2}"
+        echo -e "${BLUE}🚀 Running $2 spider with custom arguments...${NC}"
+        cd stf_scraper && poetry run scrapy crawl "${@:2}"
         ;;
     
     stats)
@@ -96,46 +130,6 @@ case "$1" in
     clean)
         echo -e "${BLUE}🧹 Cleaning data and cache...${NC}"
         cd stf_scraper && poetry run python manage.py clean
-        ;;
-    
-    test)
-        echo -e "${BLUE}🧪 Running dry-run tests for all scrapers...${NC}"
-        cd legal_scraper && poetry run python manage.py run-all --dry-run --max-pages 1
-        ;;
-    
-    lint)
-        echo -e "${BLUE}🔍 Running code linting...${NC}"
-        poetry run flake8 legal_scraper/
-        echo -e "${GREEN}✅ Linting completed${NC}"
-        ;;
-    
-    format)
-        echo -e "${BLUE}🎨 Formatting code...${NC}"
-        poetry run black legal_scraper/
-        poetry run isort legal_scraper/
-        echo -e "${GREEN}✅ Code formatted${NC}"
-        ;;
-    
-    run)
-        if [ -z "$2" ]; then
-            echo -e "${RED}❌ Error: Please specify a spider name${NC}"
-            echo "Usage: ./dev.sh run <spider> [args]"
-            echo "Available spiders: jurisprudencia, sumulas_stf, normativas_stj, direito_penal, tribunais_estaduais"
-            exit 1
-        fi
-        
-        echo -e "${BLUE}🚀 Running $2 spider...${NC}"
-        cd legal_scraper && poetry run python manage.py run "${@:2}"
-        ;;
-    
-    stats)
-        echo -e "${BLUE}📊 Scraping statistics:${NC}"
-        cd legal_scraper && poetry run python manage.py stats
-        ;;
-    
-    clean)
-        echo -e "${BLUE}🧹 Cleaning data and cache...${NC}"
-        cd legal_scraper && poetry run python manage.py clean
         ;;
     
     help|--help|-h|"")
