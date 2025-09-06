@@ -138,7 +138,7 @@ ITEM_PIPELINES = {
     'stf_scraper.pipelines.ValidationPipeline': 300,
     'stf_scraper.pipelines.DuplicatesPipeline': 400,
     'stf_scraper.pipelines.BrazilianDatePipeline': 500,
-    'stf_scraper.pipelines.JsonWriterPipeline': 600,
+    # 'stf_scraper.pipelines.JsonWriterPipeline': 600,  # Disabled - using FEEDS instead
     'stf_scraper.pipelines.StatisticsPipeline': 700,
 }
 
@@ -175,6 +175,28 @@ LOG_FILE = 'logs/scrapy.log'
 
 # Create logs directory if it doesn't exist
 Path('logs').mkdir(exist_ok=True)
+
+# ========================================
+# OUTPUT FEEDS CONFIGURATION
+# ========================================
+
+# Configure output feeds for different formats
+FEEDS = {
+    'data/%(name)s/%(name)s_%(time)s.jsonl': {
+        'format': 'jsonlines',
+        'encoding': 'utf8',
+        'store_empty': False,
+        'fields': [
+            'theme', 'title', 'case_number', 'content', 'url', 'source_site',
+            'tribunal', 'court_level', 'document_type', 'legal_area', 
+            'scraped_at', 'keywords', 'content_quality', 'publication_date',
+            'judge_rapporteur', 'subject_matter'
+        ],
+        'item_export_kwargs': {
+            'ensure_ascii': False,
+        },
+    }
+}
 
 # ========================================
 # CUSTOM SETTINGS
