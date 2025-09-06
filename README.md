@@ -17,7 +17,6 @@ Define data structure for scraped content (legal documents with title, content, 
 Process scraped data:
 - **ValidationPipeline** - Validates required fields
 - **DuplicatesPipeline** - Removes duplicate content
-- **JsonWriterPipeline** - Saves data to JSON files
 
 ### **Middlewares**
 Handle requests/responses between spiders and websites (headers, retries, etc.)
@@ -62,6 +61,9 @@ poetry run scrapy crawl stf_jurisprudencia
 
 # Run with custom settings
 poetry run scrapy crawl stf_jurisprudencia -s DOWNLOAD_DELAY=5
+
+# Run with full INFO in dev mode
+ENV=dev poetry run scrapy crawl stf_jurisprudencia -a dev_mode=true -s CLOSESPIDER_ITEMCOUNT=2 -L INFO
 ```
 
 ### **Output**

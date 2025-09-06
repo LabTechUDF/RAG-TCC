@@ -43,7 +43,16 @@ PLAYWRIGHT_LAUNCH_OPTIONS = {
         '--ignore-certificate-errors',
         '--no-sandbox',
         '--disable-dev-shm-usage',
+        '--allow-running-insecure-content',  # Allow downloads from HTTP
+        '--disable-features=VizDisplayCompositor',
     ]
+}
+
+# Playwright context options (applied to all contexts)
+PLAYWRIGHT_DEFAULT_CONTEXT_OPTIONS = {
+    "accept_downloads": True,  # Enable downloads globally
+    "bypass_csp": True,        # Bypass content security policy
+    "ignore_https_errors": True,  # Ignore HTTPS errors
 }
 
 # Playwright timeouts and optimization
@@ -60,6 +69,7 @@ PLAYWRIGHT_CONTEXTS = {
             "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
         },
         "permissions": ["clipboard-read", "clipboard-write"],
+        "accept_downloads": True,  # Enable file downloads
     },
     "stf": {
         "viewport": {"width": 1280, "height": 800},
@@ -68,6 +78,7 @@ PLAYWRIGHT_CONTEXTS = {
             "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
         },
         "permissions": ["clipboard-read", "clipboard-write"],
+        "accept_downloads": True,  # Enable file downloads for STF
     },
 }
 
@@ -193,6 +204,7 @@ FEEDS = {
             'content', 'url', 'tribunal', 'legal_area',
             'relator', 'decision_type', 'publication_date', 'decision_date',
             'partes', 'decision', 'legislacao',
+            'numero_unico', 'rtf_url', 'rtf_file_path',
             'content_quality'
         ],
         'item_export_kwargs': {

@@ -18,7 +18,7 @@ from stf_scraper.items import (
     extract_decision_date_from_content,
     extract_partes_from_content
 )
-# from pdb import set_trace
+from pdb import set_trace
 
 
 class StfJurisprudenciaSpider(scrapy.Spider):
@@ -37,6 +37,7 @@ class StfJurisprudenciaSpider(scrapy.Spider):
         'DOWNLOAD_DELAY': 3,
         'RANDOMIZE_DOWNLOAD_DELAY': 0.5,
         'CONCURRENT_REQUESTS_PER_DOMAIN': 1,  # Be gentle with STF
+        'CONCURRENT_REQUESTS': 1,  # Ensure only one request at a time to avoid browser conflicts
         'RETRY_TIMES': 3,
         'ROBOTSTXT_OBEY': False,
         # Note: CLOSESPIDER_ITEMCOUNT will be set dynamically in __init__ based on dev mode
@@ -468,6 +469,9 @@ class StfJurisprudenciaSpider(scrapy.Spider):
             # Log what we extracted
             self.logger.info(f"Extracted details - Partes: {'✅' if partes_text else '❌'}, Decision: {'✅' if decision_text else '❌'}, Legislacao: {'✅' if legislacao_text else '❌'}")
 
+            # Now try to extract the RTF file by following the process tracking flow
+            await self.extract_rtf_file(page, item_data, response)
+
             yield self.yield_item_with_limit_check(item_data)
 
         except Exception as e:
@@ -480,6 +484,358 @@ class StfJurisprudenciaSpider(scrapy.Spider):
         finally:
             if page:
                 await page.close()
+
+    async def extract_rtf_file(self, page, item_data, response):
+        """Extract RTF file by following the process tracking flow"""
+        try:
+            self.logger.info("Starting RTF extraction process...")
+
+            # Step 1: Click the process tracking button (view_list icon)
+            process_tracking_btn = await page.query_selector('mat-icon[mattooltip="Acompanhamento processual"]')
+            if not process_tracking_btn:
+                # Fallback xpath
+                process_tracking_btn = await page.query_selector('/html/body/app-root/app-home/main/app-search-detail/div/div/div[1]/div/div[1]/div[2]/div/mat-icon[1]')
+            
+            if not process_tracking_btn:
+                self.logger.warning("❌ Process tracking button not found")
+                return
+            
+            self.logger.info("Clicking process tracking button...")
+            
+            # Use the same context as the original page to avoid browser issues
+            context = page.context
+            
+            # Wait for the new tab to open when clicking process tracking
+            async with context.expect_page() as new_page_info:
+                await process_tracking_btn.click()
+            
+            new_page = await new_page_info.value
+            await new_page.wait_for_load_state('networkidle', timeout=30000)
+            self.logger.info(f"Process tracking page opened: {new_page.url}")
+
+            try:
+                # Step 2: Extract the unique number from the process page
+                unique_number_element = await new_page.query_selector('.processo-rotulo')
+                unique_number = None
+                if unique_number_element:
+                    unique_number_text = await unique_number_element.text_content()
+                    if unique_number_text:
+                        # Extract number from "Número Único: 9955162-53.2013.1.00.0000"
+                        import re
+                        number_match = re.search(r'Número Único:\s*([0-9\-\.]+)', unique_number_text)
+                        if number_match:
+                            unique_number = number_match.group(1)
+                            item_data['numero_unico'] = unique_number
+                            self.logger.info(f"✅ Extracted unique number: {unique_number}")
+
+                # Step 3: Click the DJe button to open DJe page in new tab
+                self.logger.info("Looking for DJe button...")
+                dje_button = await new_page.query_selector('#btn-dje')
+                if not dje_button:
+                    self.logger.warning("❌ DJe button not found")
+                    return
+                
+                self.logger.info("Found DJe button, clicking to open new tab...")
+                
+                # Wait for DJe page to open in new tab
+                async with context.expect_page() as dje_page_info:
+                    await dje_button.click()
+                
+                dje_page = await dje_page_info.value
+                await dje_page.wait_for_load_state('networkidle', timeout=30000)
+                self.logger.info(f"✅ DJe page opened: {dje_page.url}")
+                
+                try:
+                    # Step 4: Find and click decision links on DJe page
+                    self.logger.info("Looking for decision links...")
+                    
+                    # Try multiple selectors for decision links
+                    decision_selectors = [
+                        'a[onclick*="abreDetalheDiarioProcesso"]',  # Original selector
+                        'xpath=//*[@id="conteudo"]/div/div[3]/div/div/a',  # From debugging
+                        '#conteudo a[href="#"]',  # Alternative CSS selector
+                        'a[onclick*="abreDetalhe"]',  # Another variation
+                    ]
+                    
+                    decision_links = []
+                    selector_used = None
+                    
+                    for selector in decision_selectors:
+                        try:
+                            if selector.startswith('xpath='):
+                                # Use XPath selector
+                                xpath = selector[6:]  # Remove 'xpath=' prefix
+                                decision_links = await dje_page.query_selector_all(f'xpath={xpath}')
+                            else:
+                                # Use CSS selector
+                                decision_links = await dje_page.query_selector_all(selector)
+                            
+                            if decision_links:
+                                selector_used = selector
+                                self.logger.info(f"Found {len(decision_links)} decision links with selector: {selector}")
+                                break
+                            else:
+                                self.logger.debug(f"No decision links found with selector: {selector}")
+                        except Exception as e:
+                            self.logger.debug(f"Selector {selector} failed: {e}")
+                    
+                    if not decision_links:
+                        self.logger.warning("❌ No decision links found in DJe page with any selector")
+                        
+                        # Debug: Let's see what links are actually on the page
+                        all_links = await dje_page.query_selector_all('a')
+                        self.logger.info(f"Total links found on DJe page: {len(all_links)}")
+                        
+                        # Log first few links for debugging
+                        for i, link in enumerate(all_links[:5]):
+                            try:
+                                link_text = await link.text_content()
+                                link_onclick = await link.get_attribute('onclick')
+                                link_href = await link.get_attribute('href')
+                                self.logger.debug(f"Link {i+1}: text='{link_text}', onclick='{link_onclick}', href='{link_href}'")
+                            except:
+                                pass
+                    
+                    self.logger.info(f"Found {len(decision_links)} decision links in DJe page")
+                    
+                    # Try the first decision link for RTF download
+                    rtf_downloaded = False
+                    if decision_links:
+                        # Only try the first decision link
+                        decision_link = decision_links[0]
+                        
+                        try:
+                            decision_text = await decision_link.text_content()
+                            self.logger.info(f"Trying first decision link: {decision_text}")
+                            
+                            # Click the decision link to open the popup
+                            await decision_link.click()
+                            
+                            # Wait for the popup div to appear
+                            self.logger.info("Waiting for popup to appear...")
+                            await dje_page.wait_for_selector('#conteudo-diario-processo', timeout=15000)
+                            
+                            # Add visible 5 second sleep to ensure popup is fully loaded
+                            self.logger.info("Waiting 5 seconds for popup to fully load...")
+                            for second in range(5):
+                                await dje_page.wait_for_timeout(1000)
+                                self.logger.info(f"  Waiting... {second + 1}/5 seconds")
+                            
+                            # Step 5: Find the RTF download link in the popup
+                            rtf_link_selector = '#conteudo-diario-processo a[href*="verDecisao.asp"]'
+                            rtf_link = await dje_page.query_selector(rtf_link_selector)
+                            
+                            if not rtf_link:
+                                # Try alternative selectors
+                                alternative_selectors = [
+                                    '#conteudo-diario-processo a:has-text("Download do documento")',
+                                    '#conteudo-diario-processo a[href*="RTF"]',
+                                    '#conteudo-diario-processo a:has-text("RTF")',
+                                    '#conteudo-diario-processo strong:has-text("Download") + a',
+                                    '#conteudo-diario-processo a[href*="texto="]'
+                                ]
+                                
+                                for selector in alternative_selectors:
+                                    try:
+                                        rtf_link = await dje_page.query_selector(selector)
+                                        if rtf_link:
+                                            self.logger.info(f"Found RTF link with selector: {selector}")
+                                            break
+                                    except Exception as e:
+                                        self.logger.debug(f"Selector {selector} failed: {e}")
+                            
+                            if rtf_link:
+                                rtf_url = await rtf_link.get_attribute('href')
+                                if rtf_url:
+                                    # Use raw href as provided
+                                    item_data['rtf_url'] = rtf_url
+                                    self.logger.info(f"✅ Found RTF download URL: {rtf_url}")
+                                    
+                                    # Step 6: Download the RTF file
+                                    await self.download_rtf_file(dje_page, rtf_url, item_data)
+                                    rtf_downloaded = True
+                                else:
+                                    self.logger.warning(f"❌ RTF link found but no href attribute")
+                            else:
+                                self.logger.warning(f"❌ No RTF download link found in popup")
+                                
+                                # Debug: log the popup content to see what's actually there
+                                popup_content = await dje_page.query_selector('#conteudo-diario-processo')
+                                if popup_content:
+                                    popup_html = await popup_content.inner_html()
+                                    self.logger.debug(f"Popup content: {popup_html[:500]}...")
+                                else:
+                                    self.logger.warning(f"❌ Popup div not found")
+                            
+                            # Close popup after processing
+                            try:
+                                close_btn = await dje_page.query_selector('#conteudo-diario-processo .close, .modal-close, [onclick*="close"]')
+                                if close_btn:
+                                    await close_btn.click()
+                                    await dje_page.wait_for_timeout(1000)  # Wait for popup to close
+                                else:
+                                    # Try pressing Escape to close popup
+                                    await dje_page.keyboard.press('Escape')
+                                    await dje_page.wait_for_timeout(1000)
+                            except:
+                                pass  # Ignore if we can't close the popup
+                                
+                        except Exception as e:
+                            self.logger.error(f"Error processing first decision link: {e}")
+                    else:
+                        self.logger.warning("❌ No decision links found in DJe page")
+                    
+                    if not rtf_downloaded:
+                        self.logger.warning("❌ No RTF file could be downloaded from the first decision link")
+
+                except Exception as e:
+                    self.logger.error(f"Error in DJe page processing: {e}")
+                finally:
+                    await dje_page.close()
+
+            except Exception as e:
+                self.logger.error(f"Error in process tracking page: {e}")
+            finally:
+                await new_page.close()
+
+        except Exception as e:
+            self.logger.error(f"Error in RTF extraction process: {e}")
+
+    async def download_rtf_file(self, page, rtf_url, item_data):
+        """Download the RTF file using proper Playwright download handling"""
+        try:
+            self.logger.info(f"🔽 Downloading RTF file from: {rtf_url}")
+            
+            # Create download directory if it doesn't exist
+            download_dir = Path("data/rtf_files")
+            download_dir.mkdir(parents=True, exist_ok=True)
+            self.logger.info(f"📂 Download directory: {download_dir.absolute()}")
+            
+            # Generate filename from case number or timestamp
+            case_number = item_data.get('case_number', 'unknown')
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"{case_number}_{timestamp}.rtf"
+            file_path = download_dir / filename
+            
+            self.logger.info(f"📄 Target file path: {file_path.absolute()}")
+            
+            # Method 1: Use Playwright's download event handling with proper navigation
+            download_page = None
+            try:
+                self.logger.info("📥 Method 1: Using Playwright download event...")
+                
+                # Create a new page with download handling enabled
+                context = page.context
+                download_page = await context.new_page()
+                
+                # Set up download event listener
+                downloads = []
+                def handle_download(download):
+                    downloads.append(download)
+                    self.logger.info(f"📦 Download event triggered: {download.url}")
+                    self.logger.info(f"💾 Suggested filename: {download.suggested_filename}")
+                
+                download_page.on("download", handle_download)
+                
+                # Navigate to RTF URL - this will trigger download and may abort with ERR_ABORTED
+                self.logger.info(f"🌐 Navigating to: {rtf_url}")
+                try:
+                    response = await download_page.goto(rtf_url, wait_until='networkidle', timeout=15000)
+                    self.logger.info(f"📊 Response status: {response.status if response else 'No response'}")
+                except Exception as nav_error:
+                    # This is expected for direct downloads (ERR_ABORTED)
+                    self.logger.info(f"ℹ️ Navigation aborted (expected for downloads): {nav_error}")
+                
+                # Wait for download to complete
+                await download_page.wait_for_timeout(5000)
+                
+                if downloads:
+                    download = downloads[0]
+                    self.logger.info(f"✅ Download detected, saving to: {file_path}")
+                    
+                    # Save the download using suggested filename if ours doesn't work
+                    try:
+                        await download.save_as(str(file_path))
+                        self.logger.info(f"💾 Saved with custom filename: {file_path}")
+                    except Exception as save_error:
+                        # Try with suggested filename in same directory
+                        suggested_path = download_dir / download.suggested_filename
+                        await download.save_as(str(suggested_path))
+                        file_path = suggested_path  # Update the path
+                        self.logger.info(f"💾 Saved with suggested filename: {file_path}")
+                    
+                    # Verify the file exists
+                    if file_path.exists():
+                        file_size = file_path.stat().st_size
+                        item_data['rtf_file_path'] = str(file_path)
+                        item_data['rtf_url'] = rtf_url
+                        self.logger.info(f"🎉 RTF file successfully downloaded: {file_path} ({file_size} bytes)")
+                        return
+                    else:
+                        self.logger.error(f"❌ File not found after save: {file_path}")
+                        raise Exception("Download saved but file not found")
+                else:
+                    self.logger.warning("⚠️ No download event triggered")
+                    raise Exception("No download event detected")
+                    
+            except Exception as e:
+                self.logger.error(f"❌ Method 1 failed: {e}")
+                
+                # Method 2: Try using existing page context directly
+                try:
+                    self.logger.info("📥 Method 2: Using existing page context...")
+                    
+                    # Set up download event on the existing page
+                    existing_downloads = []
+                    def handle_existing_download(download):
+                        existing_downloads.append(download)
+                        self.logger.info(f"📦 Existing page download: {download.url}")
+                        self.logger.info(f"� Existing suggested filename: {download.suggested_filename}")
+                    
+                    page.on("download", handle_existing_download)
+                    
+                    # Try navigation on existing page
+                    try:
+                        await page.goto(rtf_url, wait_until='load', timeout=15000)
+                    except Exception as nav_error:
+                        self.logger.info(f"ℹ️ Existing page navigation aborted: {nav_error}")
+                    
+                    # Wait for download
+                    await page.wait_for_timeout(5000)
+                    
+                    if existing_downloads:
+                        download = existing_downloads[0]
+                        suggested_path = download_dir / download.suggested_filename
+                        await download.save_as(str(suggested_path))
+                        
+                        if suggested_path.exists():
+                            file_size = suggested_path.stat().st_size
+                            item_data['rtf_file_path'] = str(suggested_path)
+                            item_data['rtf_url'] = rtf_url
+                            self.logger.info(f"🎉 RTF file downloaded with existing page: {suggested_path} ({file_size} bytes)")
+                            return
+                        else:
+                            self.logger.error(f"❌ File not found: {suggested_path}")
+                    else:
+                        self.logger.warning("⚠️ No download on existing page")
+                        
+                except Exception as existing_error:
+                    self.logger.error(f"❌ Method 2 failed: {existing_error}")
+                    
+                    # Method 3: Log failure
+                    self.logger.error("❌ All download methods failed - RTF file could not be saved")
+                        
+            finally:
+                # Always close the download page to prevent tab accumulation
+                if download_page:
+                    try:
+                        await download_page.close()
+                        self.logger.info("🚪 Download page closed")
+                    except Exception as close_error:
+                        self.logger.warning(f"⚠️ Failed to close download page: {close_error}")
+                
+        except Exception as e:
+            self.logger.error(f"💥 Critical error in RTF download: {e}")
 
     async def extract_pdf_links(self, response):
         """Extract PDF download links from STF processo page"""
@@ -592,6 +948,11 @@ class StfJurisprudenciaSpider(scrapy.Spider):
         item['partes'] = item_data.get('partes', '') or item.get('partes', '')
         item['decision'] = item_data.get('decision', '')
         item['legislacao'] = item_data.get('legislacao', '')
+        
+        # Add RTF-related fields
+        item['numero_unico'] = item_data.get('numero_unico', '')
+        item['rtf_url'] = item_data.get('rtf_url', '')
+        item['rtf_file_path'] = item_data.get('rtf_file_path', '')
 
         # Increment the items counter
         self.items_extracted += 1
