@@ -8,8 +8,7 @@ A web scraper for Brazilian Supreme Court (STF) legal decisions using **Scrapy**
 
 ### **Spiders**
 Extract data from websites. We have:
-- `stf_clipboard` - Extracts STF legal decisions (working)
-- `stf_legal` - Configurable STF scraper (new)
+- `stf_jurisprudencia` - Extracts STF legal decisions (working)
 
 ### **Items** 
 Define data structure for scraped content (legal documents with title, content, case number, etc.)
@@ -49,24 +48,24 @@ cd stf_scraper
 # List available spiders
 poetry run python manage.py list
 
-# Run STF clipboard scraper (working)
-poetry run python manage.py run stf_clipboard
+# Run STF jurisprudência scraper (working)
+poetry run python manage.py run stf_jurisprudencia
 
 # Run with dry-run (no data saved, just testing)
-poetry run python manage.py run stf_clipboard --dry-run
+poetry run python manage.py run stf_jurisprudencia --dry-run
 
 # Run with browser visible (for debugging)
-poetry run python manage.py run stf_clipboard --show-browser
+poetry run python manage.py run stf_jurisprudencia --show-browser
 
 # Run directly with scrapy
-poetry run scrapy crawl stf_clipboard
+poetry run scrapy crawl stf_jurisprudencia
 
 # Run with custom settings
-poetry run scrapy crawl stf_clipboard -s DOWNLOAD_DELAY=5
+poetry run scrapy crawl stf_jurisprudencia -s DOWNLOAD_DELAY=5
 ```
 
 ### **Output**
-Data saved to `stf_scraper/data/stf_clipboard/` as JSON files with STF legal decisions.
+Data saved to `stf_scraper/data/stf_jurisprudencia/` as JSON files with STF legal decisions.
 
 ## 📁 Structure
 ```

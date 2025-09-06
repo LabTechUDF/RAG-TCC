@@ -17,20 +17,20 @@ cd /home/workstation/git/RAG-TCC/stf_scraper
 case $MODE in
     "dev"|"development")
         echo "🚧 Running in DEVELOPMENT mode (5 items limit)..."
-        scrapy crawl stf_clipboard \
+        scrapy crawl stf_jurisprudencia \
             -a dev_mode=true \
             -s LOG_LEVEL=INFO \
             -L INFO
         ;;
     "prod"|"production")
         echo "🚀 Running in PRODUCTION mode (no limit)..."
-        scrapy crawl stf_clipboard \
+        scrapy crawl stf_jurisprudencia \
             -s LOG_LEVEL=INFO \
             -L INFO
         ;;
     [0-9]*)
         echo "⚙️  Running with custom limit of $MODE items..."
-        scrapy crawl stf_clipboard \
+        scrapy crawl stf_jurisprudencia \
             -s CLOSESPIDER_ITEMCOUNT=$MODE \
             -s LOG_LEVEL=INFO \
             -L INFO
@@ -47,4 +47,4 @@ esac
 
 echo "================================================="
 echo "✅ Spider run completed!"
-echo "📁 Check the data/stf_clipboard/ directory for results"
+echo "📁 Check the data/stf_jurisprudencia/ directory for results"

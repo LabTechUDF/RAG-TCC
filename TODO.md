@@ -1,7 +1,6 @@
 ### 🚧 In Progress
 1. **STF Data Collection**
-   - ✅ Working `stf_clipboard` spider (tested, produces data)
-   - 🔄 Testing new `stf_legal` spider
+   - ✅ Working `stf_jurisprudencia` spider (tested, produces data)
    - 📝 Focus on criminal law decisions (art. 171 §3 - estelionato previdenciário)
 
 ### 📋 Next Steps

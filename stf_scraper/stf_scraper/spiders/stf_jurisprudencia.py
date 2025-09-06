@@ -1,5 +1,5 @@
 """
-STF Clipboard & PDF Spider - Focused on extracting clipboard content and PDFs from STF decisões
+STF Jurisprudência Spider - Focused on extracting clipboard content and PDFs from STF decisões
 """
 
 import re
@@ -14,10 +14,10 @@ from stf_scraper.items import LegalDocumentItem
 # from pdb import set_trace
 
 
-class StfClipboardSpider(scrapy.Spider):
-    """Focused spider for STF clipboard content and PDF extraction"""
+class StfJurisprudenciaSpider(scrapy.Spider):
+    """Focused spider for STF jurisprudência content and PDF extraction"""
 
-    name = 'stf_clipboard'
+    name = 'stf_jurisprudencia'
     allowed_domains = ['jurisprudencia.stf.jus.br']
 
     # Direct STF URL from config
@@ -519,7 +519,7 @@ class StfClipboardSpider(scrapy.Spider):
         item = LegalDocumentItem()
 
         # Map data to item fields
-        item['theme'] = 'stf_clipboard'
+        item['theme'] = 'stf_jurisprudencia'
         item['title'] = item_data.get('title', f"STF Item {item_data.get('item_index', 'Unknown')}")
         item['case_number'] = item_data.get('case_number', '')
         item['content'] = item_data.get('clipboard_content', '')
