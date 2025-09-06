@@ -91,6 +91,31 @@ def extract_decision_date_from_content(content):
     return None
 
 
+def extract_partes_from_content(content):
+    """Extract parties (partes) information from content"""
+    if not content:
+        return None
+    
+    # Pattern to match "Impetrante: NAME" or "Paciente: NAME" etc.
+    patterns = [
+        r'Impetrante:\s*([^\n]+)',
+        r'Paciente:\s*([^\n]+)',
+        r'Requerente:\s*([^\n]+)',
+        r'Agravante:\s*([^\n]+)',
+        r'Recorrente:\s*([^\n]+)',
+        r'Autor:\s*([^\n]+)',
+        r'Réu:\s*([^\n]+)'
+    ]
+    
+    partes = []
+    for pattern in patterns:
+        matches = re.findall(pattern, content, re.IGNORECASE)
+        for match in matches:
+            partes.append(match.strip())
+    
+    return '; '.join(partes) if partes else None
+
+
 class LegalDocumentItem(scrapy.Item):
     """Base item for Brazilian legal documents"""
     
@@ -154,6 +179,22 @@ class JurisprudenciaItem(LegalDocumentItem):
     )
     
     decision_date = scrapy.Field(
+        output_processor=TakeFirst()
+    )
+    
+    # New fields for detailed decision content
+    partes = scrapy.Field(
+        input_processor=MapCompose(clean_text),
+        output_processor=TakeFirst()
+    )
+    
+    decision = scrapy.Field(
+        input_processor=MapCompose(clean_text),
+        output_processor=TakeFirst()
+    )
+    
+    legislacao = scrapy.Field(
+        input_processor=MapCompose(clean_text),
         output_processor=TakeFirst()
     )
     

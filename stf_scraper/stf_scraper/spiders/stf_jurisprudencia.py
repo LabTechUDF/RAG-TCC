@@ -15,7 +15,8 @@ from stf_scraper.items import (
     get_classe_processual_from_url,
     extract_relator_from_content,
     extract_publication_date_from_content,
-    extract_decision_date_from_content
+    extract_decision_date_from_content,
+    extract_partes_from_content
 )
 # from pdb import set_trace
 
@@ -290,152 +291,191 @@ class StfJurisprudenciaSpider(scrapy.Spider):
                         self.logger.debug(f"Found processo link: {processo_link}")
                         break
 
-                # Create item data even if no clipboard button (for debugging)
+                # Create initial item data
                 item_data = {
                     'title': title or f"Item {i+1}",
                     'case_number': case_number_from_url,
-                    'full_decision_data': response.urljoin(decision_data_link) if decision_data_link else None,
-                    'processo_link': response.urljoin(processo_link) if processo_link else None,
                     'source_url': response.url,
                     'scraped_at': datetime.now().isoformat(),
                     'item_index': i+1,
-                    'has_clipboard_button': bool(clipboard_element)
                 }
 
-                # If no clipboard button found, still try to extract some content and save the item
-                if not clipboard_element:
-                    self.logger.warning(f"❌ Item {i+1}: No clipboard button found, extracting available content")
+                # If we have a decision data link, follow it to get detailed content
+                if decision_data_link:
+                    detail_url = response.urljoin(decision_data_link)
+                    self.logger.info(f"Following detail URL for item {i+1}: {detail_url}")
                     
-                    # Extract whatever content we can find
-                    content_selectors = ['.ementa::text', '.resumo::text', '.abstract::text', '.texto::text']
-                    content = None
-                    for selector in content_selectors:
-                        content = item.css(selector).get()
-                        if content:
-                            content = content.strip()
-                            if len(content) > 20:
-                                break
-                    
-                    item_data['clipboard_content'] = content or f"STF Item {i+1} - No content extracted from fallback selectors"
-                    item_data['content_length'] = len(content) if content else 0
-                    item_data['extraction_method'] = 'fallback-no-clipboard'
-                    
-                    # Yield the item even without clipboard
+                    yield scrapy.Request(
+                        url=detail_url,
+                        meta={
+                            'playwright': True,
+                            'playwright_include_page': True,
+                            'playwright_page_methods': [
+                                PageMethod('wait_for_load_state', 'networkidle'),
+                                PageMethod('wait_for_function', '''
+                                    () => {
+                                        return document.readyState === 'complete' &&
+                                               (document.querySelector('#decisaoTexto') ||
+                                                document.querySelector('.header-icons') ||
+                                                document.querySelector('.mat-icon') !== null);
+                                    }
+                                ''', timeout=30000),
+                            ],
+                            'item_data': item_data,
+                        },
+                        callback=self.parse_decision_detail,
+                        errback=self.handle_error
+                    )
+                else:
+                    self.logger.warning(f"❌ Item {i+1}: No decision data link found, skipping detailed extraction")
+                    # Still yield a basic item
+                    item_data['content'] = f"STF Item {i+1} - No decision data link available"
+                    item_data['extraction_method'] = 'no-detail-link'
                     yield self.yield_item_with_limit_check(item_data)
-                    continue
 
-                # Now click the clipboard button and extract the content directly
-                self.logger.info(f"Attempting to click clipboard button for item {i+1}")
-                
-                try:
-                    # Click the clipboard button and capture the content
-                    clipboard_content = await page.evaluate(f'''
-                        (async () => {{
-                            // Find the clipboard button in this specific result item
-                            const resultItems = document.querySelectorAll('div[id^="result-index-"]');
-                            const currentItem = resultItems[{i}];
-                            
-                            if (!currentItem) {{
-                                console.log('Could not find result item {i}');
-                                return null;
-                            }}
-                            
-                            // Find clipboard button within this item
-                            const clipboardSelectors = [
-                                'a[id^="clipboard-despacho"]',
-                                'a[id^="clipboard-"]', 
-                                'a[class*="clipboard"]',
-                                'button[id^="clipboard-"]',
-                                '[onclick*="clipboard"]'
-                            ];
-                            
-                            let clipboardBtn = null;
-                            for (const selector of clipboardSelectors) {{
-                                clipboardBtn = currentItem.querySelector(selector);
-                                if (clipboardBtn) {{
-                                    console.log('Found clipboard button with selector:', selector);
-                                    break;
-                                }}
-                            }}
-                            
-                            if (!clipboardBtn) {{
-                                console.log('No clipboard button found in item {i+1}');
-                                return null;
-                            }}
-                            
-                            // Store original clipboard content if any
-                            let originalClipboard = '';
-                            try {{
-                                originalClipboard = await navigator.clipboard.readText();
-                            }} catch(e) {{
-                                console.log('Could not read original clipboard:', e);
-                            }}
-                            
-                            // Click the clipboard button
-                            console.log('Clicking clipboard button...');
-                            clipboardBtn.click();
-                            
-                            // Wait a moment for clipboard to be populated
-                            await new Promise(resolve => setTimeout(resolve, 1000));
-                            
-                            // Try to read the clipboard content
-                            try {{
-                                const clipboardText = await navigator.clipboard.readText();
-                                if (clipboardText && clipboardText !== originalClipboard) {{
-                                    console.log('Successfully copied content to clipboard:', clipboardText.length, 'characters');
-                                    return {{
-                                        content: clipboardText,
-                                        source: 'clipboard-copy',
-                                        button_selector: clipboardBtn.tagName.toLowerCase() + (clipboardBtn.id ? '#' + clipboardBtn.id : '')
-                                    }};
-                                }}
-                            }} catch(e) {{
-                                console.log('Could not read clipboard after click:', e);
-                            }}
-                            
-                            // Fallback: try to extract content from nearby text elements
-                            const nearbyText = currentItem.querySelector('.ementa, .decisao-texto, .inteiro-teor, pre');
-                            if (nearbyText && nearbyText.innerText.length > 50) {{
-                                console.log('Using nearby text as fallback:', nearbyText.innerText.length, 'characters');
-                                return {{
-                                    content: nearbyText.innerText.trim(),
-                                    source: 'nearby-text-fallback'
-                                }};
-                            }}
-                            
-                            return null;
-                        }})();
-                    ''')
+        finally:
+            if page:
+                await page.close()
+
+    async def parse_decision_detail(self, response):
+        """Parse the detailed decision page to extract full content"""
+        page = response.meta.get("playwright_page")
+        item_data = response.meta.get('item_data', {})
+
+        try:
+            self.logger.info(f"Parsing decision detail page: {response.url}")
+
+            # Wait for page to be fully loaded
+            await page.wait_for_function('''
+                () => {
+                    return document.readyState === 'complete' &&
+                           (document.querySelector('#decisaoTexto') ||
+                            document.querySelector('.header-icons') ||
+                            document.querySelector('.mat-icon') !== null);
+                }
+            ''', timeout=15000)
+
+            # Extract full content using the clipboard button
+            clipboard_content = await page.evaluate('''
+                (async () => {
+                    // Look for the clipboard button in header-icons section
+                    const headerIcons = document.querySelector('.header-icons.hide-in-print');
+                    let clipboardBtn = null;
                     
-                    item_data = {
-                        'title': title or f"Item {i+1}",
-                        'case_number': case_number_from_url,
-                        'full_decision_data': response.urljoin(decision_data_link) if decision_data_link else None,
-                        'processo_link': response.urljoin(processo_link) if processo_link else None,
-                        'source_url': response.url,
-                        'scraped_at': datetime.now().isoformat(),
-                        'item_index': i+1,
+                    if (headerIcons) {
+                        // Try to find the clipboard icon by different methods
+                        clipboardBtn = headerIcons.querySelector('mat-icon[mattooltip*="Copiar"]') ||
+                                     headerIcons.querySelector('mat-icon:contains("file_copy")') ||
+                                     headerIcons.querySelector('mat-icon.clipboard-result') ||
+                                     Array.from(headerIcons.querySelectorAll('mat-icon')).find(icon => 
+                                         icon.textContent.trim() === 'file_copy' || 
+                                         icon.getAttribute('mattooltip')?.includes('Copiar')
+                                     );
                     }
                     
-                    if clipboard_content and clipboard_content.get('content'):
-                        content_text = clipboard_content['content']
-                        item_data['clipboard_content'] = content_text
-                        item_data['content_length'] = len(content_text)
-                        item_data['extraction_method'] = clipboard_content.get('source', 'unknown')
-                        item_data['button_info'] = clipboard_content.get('button_selector', 'unknown')
-                        self.logger.info(f"✅ Item {i+1}: Extracted {len(content_text)} characters via {clipboard_content.get('source')}")
-                    else:
-                        self.logger.warning(f"❌ Item {i+1}: No clipboard content extracted")
-                        item_data['clipboard_content'] = f"STF Item {i+1} - No clipboard content available. Please check original source."
-                        item_data['content_length'] = 0
-                        item_data['extraction_method'] = 'failed'
+                    // Fallback: try xpath or other selectors
+                    if (!clipboardBtn) {
+                        const xpath = '/html/body/app-root/app-home/main/app-search-detail/div/div/div[1]/div/div[1]/div[2]/div/mat-icon[4]';
+                        const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+                        clipboardBtn = result.singleNodeValue;
+                    }
                     
-                    # Always yield the item - validation pipeline will handle quality filtering
-                    yield self.yield_item_with_limit_check(item_data)
+                    if (!clipboardBtn) {
+                        console.log('No clipboard button found');
+                        return null;
+                    }
                     
-                except Exception as e:
-                    self.logger.error(f"Error processing clipboard for item {i+1}: {e}")
-                    continue
+                    // Store original clipboard content
+                    let originalClipboard = '';
+                    try {
+                        originalClipboard = await navigator.clipboard.readText();
+                    } catch(e) {
+                        console.log('Could not read original clipboard:', e);
+                    }
+                    
+                    // Click the clipboard button
+                    console.log('Clicking clipboard button...');
+                    clipboardBtn.click();
+                    
+                    // Wait for clipboard to be populated
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    // Try to read the clipboard content
+                    try {
+                        const clipboardText = await navigator.clipboard.readText();
+                        if (clipboardText && clipboardText !== originalClipboard) {
+                            console.log('Successfully copied content to clipboard:', clipboardText.length, 'characters');
+                            return {
+                                content: clipboardText,
+                                source: 'clipboard-detail-page'
+                            };
+                        }
+                    } catch(e) {
+                        console.log('Could not read clipboard after click:', e);
+                    }
+                    
+                    return null;
+                })();
+            ''')
+
+            # Extract specific sections from the page
+            # 1. Extract "Partes" information - using XPath for better targeting
+            # Target: <div fxlayout="column" class="jud-text ng-star-inserted"><h4>Partes</h4><div class="text-pre-wrap">...</div></div>
+            partes_elements = response.xpath('//h4[text()="Partes"]/following-sibling::div[@class="text-pre-wrap"]//text()').getall()
+            if not partes_elements:
+                # Alternative XPath - look for any h4 containing "Partes"
+                partes_elements = response.xpath('//h4[contains(text(), "Partes")]/following-sibling::div[@class="text-pre-wrap"]//text()').getall()
+            
+            partes_text = ' '.join([p.strip() for p in partes_elements if p.strip()]) if partes_elements else None
+            self.logger.debug(f"Partes extraction: found {len(partes_elements) if partes_elements else 0} elements")
+
+            # 2. Extract decision text from div with id="decisaoTexto"
+            decision_element = response.css('#decisaoTexto ::text').getall()
+            decision_text = ' '.join([d.strip() for d in decision_element if d.strip()]) if decision_element else None
+            self.logger.debug(f"Decision extraction: found {len(decision_element) if decision_element else 0} elements")
+
+            # 3. Extract legislation from div with class="text-pre-wrap" under Legislação section
+            # Using XPath to target the specific Legislação section
+            legislacao_elements = response.xpath('//h4[text()="Legislação"]/following-sibling::div[@class="text-pre-wrap"]//text()').getall()
+            if not legislacao_elements:
+                # Alternative XPath
+                legislacao_elements = response.xpath('//h4[contains(text(), "Legislação")]/following-sibling::div[@class="text-pre-wrap"]//text()').getall()
+            
+            legislacao_text = ' '.join([l.strip() for l in legislacao_elements if l.strip()]) if legislacao_elements else None
+            self.logger.debug(f"Legislacao extraction: found {len(legislacao_elements) if legislacao_elements else 0} elements")
+
+            # Update item data with extracted content
+            if clipboard_content and clipboard_content.get('content'):
+                full_content = clipboard_content['content']
+                item_data['content'] = full_content
+                item_data['content_length'] = len(full_content)
+                item_data['extraction_method'] = 'clipboard-detail-page'
+                self.logger.info(f"✅ Extracted {len(full_content)} characters from clipboard")
+            else:
+                # Fallback: try to extract content from visible elements
+                fallback_content = response.css('main ::text, .content ::text, .decisao ::text').getall()
+                fallback_text = ' '.join([c.strip() for c in fallback_content if c.strip()])[:5000]  # Limit to first 5000 chars
+                item_data['content'] = fallback_text or "Content extraction failed"
+                item_data['extraction_method'] = 'fallback-detail-page'
+                self.logger.warning("❌ Clipboard extraction failed, using fallback content")
+
+            # Add the new extracted fields
+            item_data['partes'] = partes_text
+            item_data['decision'] = decision_text
+            item_data['legislacao'] = legislacao_text
+            item_data['detail_url'] = response.url
+
+            # Log what we extracted
+            self.logger.info(f"Extracted details - Partes: {'✅' if partes_text else '❌'}, Decision: {'✅' if decision_text else '❌'}, Legislacao: {'✅' if legislacao_text else '❌'}")
+
+            yield self.yield_item_with_limit_check(item_data)
+
+        except Exception as e:
+            self.logger.error(f"Error parsing decision detail: {e}")
+            # Still try to yield the basic item
+            item_data['content'] = f"Error extracting detailed content: {str(e)}"
+            item_data['extraction_method'] = 'error'
+            yield self.yield_item_with_limit_check(item_data)
 
         finally:
             if page:
@@ -528,8 +568,8 @@ class StfJurisprudenciaSpider(scrapy.Spider):
         item['theme'] = 'stf_jurisprudencia'
         item['title'] = item_data.get('title', f"STF Item {item_data.get('item_index', 'Unknown')}")
         item['case_number'] = item_data.get('case_number', '')
-        item['content'] = item_data.get('clipboard_content', '')
-        item['url'] = item_data.get('full_decision_data', '') or item_data.get('processo_link', '') or item_data.get('source_url', '')
+        item['content'] = item_data.get('content', item_data.get('clipboard_content', ''))
+        item['url'] = item_data.get('detail_url', '') or item_data.get('full_decision_data', '') or item_data.get('processo_link', '') or item_data.get('source_url', '')
         item['tribunal'] = 'STF'
         item['legal_area'] = 'Penal'  # Based on search query
         
@@ -538,11 +578,20 @@ class StfJurisprudenciaSpider(scrapy.Spider):
         item['classe_processual_unificada'] = get_classe_processual_from_url(search_url)
 
         # Extract fields from content
-        content = item_data.get('clipboard_content', '')
+        content = item_data.get('content', item_data.get('clipboard_content', ''))
         if content:
             item['relator'] = extract_relator_from_content(content)
             item['publication_date'] = extract_publication_date_from_content(content)
             item['decision_date'] = extract_decision_date_from_content(content)
+            
+            # If partes wasn't extracted from page elements, try to extract from content
+            if not item_data.get('partes'):
+                item['partes'] = extract_partes_from_content(content)
+
+        # Add new detailed fields
+        item['partes'] = item_data.get('partes', '') or item.get('partes', '')
+        item['decision'] = item_data.get('decision', '')
+        item['legislacao'] = item_data.get('legislacao', '')
 
         # Increment the items counter
         self.items_extracted += 1

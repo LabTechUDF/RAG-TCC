@@ -192,6 +192,7 @@ FEEDS = {
             'theme', 'title', 'case_number', 'classe_processual_unificada', 
             'content', 'url', 'tribunal', 'legal_area',
             'relator', 'decision_type', 'publication_date', 'decision_date',
+            'partes', 'decision', 'legislacao',
             'content_quality'
         ],
         'item_export_kwargs': {
