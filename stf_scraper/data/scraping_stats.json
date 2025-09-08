@@ -1,19 +1,19 @@
 {
-  "total_items": 4,
+  "total_items": 89,
   "items_by_theme": {
-    "stf_jurisprudencia": 4
+    "stf_jurisprudencia": 89
   },
   "items_by_quality": {
-    "high": 4,
+    "high": 88,
     "medium": 0,
-    "low": 0
+    "low": 1
   },
   "items_by_classe": {
-    "null": 4
+    "null": 89
   },
-  "items_with_relator": 4,
-  "items_with_content": 4,
-  "start_time": "2025-09-06T04:50:42.414771",
-  "end_time": "2025-09-06T04:53:00.731521",
-  "duration": 138.31675
+  "items_with_relator": 88,
+  "items_with_content": 88,
+  "start_time": "2025-09-06T05:07:20.717497",
+  "end_time": "2025-09-06T05:39:59.910170",
+  "duration": 1959.192673
 }
