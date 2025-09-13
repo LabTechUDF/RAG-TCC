@@ -17,7 +17,8 @@ class STFScraperManager:
     def __init__(self):
         self.project_root = Path(__file__).parent
         self.available_spiders = [
-            'stf_jurisprudencia',  # Working STF spider
+            'stf_jurisprudencia', 
+            'simple_query_spider',
         ]
     
     def list_spiders(self):
@@ -258,7 +259,7 @@ Examples:
     
     # Run command
     run_parser = subparsers.add_parser('run', help='Run a specific spider')
-    run_parser.add_argument('spider', choices=['jurisprudencia', 'stf_jurisprudencia', 'sumulas_stf', 'normativas_stj', 'direito_penal', 'tribunais_estaduais'])
+    run_parser.add_argument('spider', choices=['jurisprudencia', 'stf_jurisprudencia', 'sumulas_stf', 'normativas_stj', 'direito_penal', 'tribunais_estaduais', 'simple_query_spider'])
     run_parser.add_argument('--dry-run', action='store_true', help='Run without saving data')
     run_parser.add_argument('--max-pages', type=int, help='Maximum pages to scrape')
     run_parser.add_argument('--format', choices=['json', 'csv'], default='json', help='Output format')
