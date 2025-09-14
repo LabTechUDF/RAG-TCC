@@ -5,97 +5,13 @@
       "query": {
         "query": "abandono de função artigo 323",
         "artigo": "323",
-        "url": "https://jurisprudencia.stf.jus.br/pages/search?base=decisoes&pesquisa_inteiro_teor=false&sinonimo=true&plural=true&radicais=false&buscaExata=true&page=1&pageSize=250&queryString=abandono%20de%20fun%C3%A7%C3%A3o%20artigo%20323&sort=_score&sortBy=desc"
+        "url": "https://jurisprudencia.stf.jus.br/pages/search?base=decisoes&pesquisa_inteiro_teor=false&sinonimo=true&plural=true&radicais=false&buscaExata=true&page=1&pageSize=10&queryString=abandono%20de%20fun%C3%A7%C3%A3o%20artigo%20323&sort=_score&sortBy=desc"
       },
-      "completed_at": "2025-09-14T06:04:24.824524",
-      "status": "completed"
-    },
-    {
-      "query": {
-        "query": "peculato culposo artigo 312",
-        "artigo": "312",
-        "url": "https://jurisprudencia.stf.jus.br/pages/search?base=decisoes&pesquisa_inteiro_teor=false&sinonimo=true&plural=true&radicais=false&buscaExata=true&page=1&pageSize=250&queryString=peculato%20culposo%20artigo%20312&sort=_score&sortBy=desc"
-      },
-      "completed_at": "2025-09-14T06:17:01.082454",
-      "status": "completed"
-    },
-    {
-      "query": {
-        "query": "subtração de coisa própria artigo 346",
-        "artigo": "346",
-        "url": "https://jurisprudencia.stf.jus.br/pages/search?base=decisoes&pesquisa_inteiro_teor=false&sinonimo=true&plural=true&radicais=false&buscaExata=true&page=1&pageSize=250&queryString=subtra%C3%A7%C3%A3o%20de%20coisa%20pr%C3%B3pria%20artigo%20346&sort=_score&sortBy=desc"
-      },
-      "completed_at": "2025-09-14T06:17:44.307281",
-      "status": "completed"
-    },
-    {
-      "query": {
-        "query": "fraude à execução artigo 179",
-        "artigo": "179",
-        "url": "https://jurisprudencia.stf.jus.br/pages/search?base=decisoes&pesquisa_inteiro_teor=false&sinonimo=true&plural=true&radicais=false&buscaExata=true&page=1&pageSize=250&queryString=fraude%20%C3%A0%20execu%C3%A7%C3%A3o%20artigo%20179&sort=_score&sortBy=desc"
-      },
-      "completed_at": "2025-09-14T11:52:25.059364",
-      "status": "completed"
-    },
-    {
-      "query": {
-        "query": "omissão de notificação de crime artigo 319-A",
-        "artigo": "319-A",
-        "url": "https://jurisprudencia.stf.jus.br/pages/search?base=decisoes&pesquisa_inteiro_teor=false&sinonimo=true&plural=true&radicais=false&buscaExata=true&page=1&pageSize=250&queryString=omiss%C3%A3o%20de%20notifica%C3%A7%C3%A3o%20de%20crime%20artigo%20319-A&sort=_score&sortBy=desc"
-      },
-      "completed_at": "2025-09-14T11:55:55.393041",
-      "status": "completed"
-    },
-    {
-      "query": {
-        "query": "violação de sigilo funcional artigo 325",
-        "artigo": "325",
-        "url": "https://jurisprudencia.stf.jus.br/pages/search?base=decisoes&pesquisa_inteiro_teor=false&sinonimo=true&plural=true&radicais=false&buscaExata=true&page=1&pageSize=250&queryString=viola%C3%A7%C3%A3o%20de%20sigilo%20funcional%20artigo%20325&sort=_score&sortBy=desc"
-      },
-      "completed_at": "2025-09-14T11:59:52.146730",
-      "status": "completed"
-    },
-    {
-      "query": {
-        "query": "abandono material artigo 244",
-        "artigo": "244",
-        "url": "https://jurisprudencia.stf.jus.br/pages/search?base=decisoes&pesquisa_inteiro_teor=false&sinonimo=true&plural=true&radicais=false&buscaExata=true&page=1&pageSize=250&queryString=abandono%20material%20artigo%20244&sort=_score&sortBy=desc"
-      },
-      "completed_at": "2025-09-14T12:00:37.758448",
-      "status": "completed"
-    },
-    {
-      "query": {
-        "query": "exercício ilegal da profissão artigo 205",
-        "artigo": "205",
-        "url": "https://jurisprudencia.stf.jus.br/pages/search?base=decisoes&pesquisa_inteiro_teor=false&sinonimo=true&plural=true&radicais=false&buscaExata=true&page=1&pageSize=250&queryString=exerc%C3%ADcio%20ilegal%20da%20profiss%C3%A3o%20artigo%20205&sort=_score&sortBy=desc"
-      },
-      "completed_at": "2025-09-14T12:46:21.308824",
+      "completed_at": "2025-09-14T15:43:29.624486",
       "status": "completed"
     }
   ],
-  "failed_queries": [
-    {
-      "query": {
-        "query": "exercício arbitrário das próprias razões artigo 345",
-        "artigo": "345",
-        "url": "https://jurisprudencia.stf.jus.br/pages/search?base=decisoes&pesquisa_inteiro_teor=false&sinonimo=true&plural=true&radicais=false&buscaExata=true&page=1&pageSize=250&queryString=exerc%C3%ADcio%20arbitr%C3%A1rio%20das%20pr%C3%B3prias%20raz%C3%B5es%20artigo%20345&sort=_score&sortBy=desc"
-      },
-      "failed_at": "2025-09-14T11:59:17.402865",
-      "error": "Timeout after 30 minutes",
-      "status": "failed"
-    },
-    {
-      "query": {
-        "query": "desobediência artigo 330",
-        "artigo": "330",
-        "url": "https://jurisprudencia.stf.jus.br/pages/search?base=decisoes&pesquisa_inteiro_teor=false&sinonimo=true&plural=true&radicais=false&buscaExata=true&page=1&pageSize=250&queryString=desobedi%C3%AAncia%20artigo%20330&sort=_score&sortBy=desc"
-      },
-      "failed_at": "2025-09-14T11:59:17.600997",
-      "error": "Timeout after 30 minutes",
-      "status": "failed"
-    }
-  ],
-  "total_queries": 10,
-  "initialized_at": "2025-09-14T06:01:20.108431"
+  "failed_queries": [],
+  "total_queries": 1,
+  "initialized_at": "2025-09-14T15:37:55.882648"
 }
