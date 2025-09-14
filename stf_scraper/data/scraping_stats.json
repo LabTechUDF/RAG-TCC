@@ -1,19 +1,19 @@
 {
-  "total_items": 89,
+  "total_items": 11,
   "items_by_theme": {
-    "stf_jurisprudencia": 89
+    "art_323": 11
   },
   "items_by_quality": {
-    "high": 88,
+    "high": 11,
     "medium": 0,
-    "low": 1
+    "low": 0
   },
   "items_by_classe": {
-    "null": 89
+    "null": 11
   },
-  "items_with_relator": 88,
-  "items_with_content": 88,
-  "start_time": "2025-09-06T05:07:20.717497",
-  "end_time": "2025-09-06T05:39:59.910170",
-  "duration": 1959.192673
+  "items_with_relator": 11,
+  "items_with_content": 11,
+  "start_time": "2025-09-14T00:15:07.488709",
+  "end_time": "2025-09-14T00:18:40.430519",
+  "duration": 212.94181
 }

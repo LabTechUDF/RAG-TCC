@@ -14,6 +14,89 @@ from pathlib import Path
 import logging
 
 
+class ArticleBasedJsonWriterPipeline:
+    """Pipeline to write items to JSON files organized by article number"""
+    
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+        self.files = {}  # Keep track of open files per article
+        self.items_count = {}  # Count items per article
+        
+    def open_spider(self, spider):
+        """Initialize when spider opens"""
+        self.spider_name = spider.name
+        self.base_path = Path('data') / self.spider_name
+        self.base_path.mkdir(parents=True, exist_ok=True)
+        
+    def close_spider(self, spider):
+        """Close all open files when spider closes"""
+        for file_handle in self.files.values():
+            file_handle.close()
+        
+        # Log summary
+        for article, count in self.items_count.items():
+            self.logger.info(f"Article {article}: {count} items scraped")
+            
+    def process_item(self, item, spider):
+        """Process each item and write to appropriate file"""
+        adapter = ItemAdapter(item)
+        
+        # Extract article number from source or cluster_name
+        article_number = self.extract_article_number(adapter)
+        
+        if not article_number:
+            self.logger.warning("Could not extract article number from item, using 'unknown'")
+            article_number = 'unknown'
+        
+        # Create directory for this article if it doesn't exist
+        article_dir = self.base_path / f"art_{article_number}"
+        article_dir.mkdir(exist_ok=True)
+        
+        # Get or create file handle for this article
+        file_key = article_number
+        if file_key not in self.files:
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"art_{article_number}_{self.spider_name}_{timestamp}.jsonl"
+            file_path = article_dir / filename
+            
+            self.files[file_key] = open(file_path, 'w', encoding='utf-8')
+            self.items_count[article_number] = 0
+            self.logger.info(f"Created output file for Article {article_number}: {file_path}")
+        
+        # Write item to file
+        line = json.dumps(dict(adapter), ensure_ascii=False) + '\n'
+        self.files[file_key].write(line)
+        self.files[file_key].flush()  # Ensure data is written
+        
+        # Update count
+        self.items_count[article_number] += 1
+        
+        return item
+    
+    def extract_article_number(self, adapter):
+        """Extract article number from item"""
+        # Try to extract from cluster_name (new format: art_312)
+        cluster_name = adapter.get('cluster_name', '')
+        if cluster_name and cluster_name.startswith('art_'):
+            return cluster_name.replace('art_', '')
+        
+        # Try to extract from source field (fallback)
+        source = adapter.get('source', '')
+        if source:
+            match = re.search(r'art_(\d+(?:-[A-Z])?)', source, re.IGNORECASE)
+            if match:
+                return match.group(1)
+        
+        # Try to extract from cluster_description (fallback)
+        cluster_description = adapter.get('cluster_description', '')
+        if cluster_description:
+            match = re.search(r'art\.\s*(\d+(?:-[A-Z])?)', cluster_description, re.IGNORECASE)
+            if match:
+                return match.group(1)
+        
+        return None
+
+
 class ValidationPipeline:
     """Validate scraped legal documents and assess content quality"""
     
@@ -235,9 +318,9 @@ class StatisticsPipeline:
         # Update counters
         self.stats['total_items'] += 1
         
-        # Count by theme
-        theme = adapter.get('theme', 'unknown')
-        self.stats['items_by_theme'][theme] = self.stats['items_by_theme'].get(theme, 0) + 1
+                # Count by cluster (article)
+        cluster_name = adapter.get('cluster_name', 'unknown')
+        self.stats['items_by_theme'][cluster_name] = self.stats['items_by_theme'].get(cluster_name, 0) + 1
         
         # Count by quality score
         quality_score = adapter.get('content_quality', 0)

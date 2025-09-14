@@ -120,7 +120,19 @@ class LegalDocumentItem(scrapy.Item):
     """Base item for Brazilian legal documents"""
     
     # Core identification
-    theme = scrapy.Field(
+    cluster_name = scrapy.Field(
+        output_processor=TakeFirst()
+    )
+    
+    cluster_description = scrapy.Field(
+        output_processor=TakeFirst()
+    )
+    
+    article_reference = scrapy.Field(
+        output_processor=TakeFirst()
+    )
+    
+    source = scrapy.Field(
         output_processor=TakeFirst()
     )
     

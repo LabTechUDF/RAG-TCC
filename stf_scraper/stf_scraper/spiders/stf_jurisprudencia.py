@@ -27,10 +27,22 @@ class StfJurisprudenciaSpider(scrapy.Spider):
     name = 'stf_jurisprudencia'
     allowed_domains = ['jurisprudencia.stf.jus.br']
 
-    # Direct STF URL from config
-    start_urls = [
-        'https://jurisprudencia.stf.jus.br/pages/search?base=decisoes&pesquisa_inteiro_teor=false&sinonimo=true&plural=true&radicais=false&buscaExata=true&page=1&pageSize=250&queryString=%22estelionato%20previdenci%C3%A1rio%22%20%22(artigo%20ou%20art)%20171%20%C2%A73%22~3%20natureza&sort=_score&sortBy=desc'
-    ]
+    def load_query_array(self):
+        """Load query array from JSON file"""
+        query_file = Path(__file__).parent.parent.parent / 'data' / 'simple_query_spider' / 'query_links.json'
+        
+        if not query_file.exists():
+            self.logger.error(f"Query file not found: {query_file}")
+            return []
+        
+        try:
+            with open(query_file, 'r', encoding='utf-8') as f:
+                query_array = json.load(f)
+            self.logger.info(f"Loaded {len(query_array)} queries from {query_file}")
+            return query_array
+        except Exception as e:
+            self.logger.error(f"Error loading query file: {e}")
+            return []
 
     custom_settings = {
         'PLAYWRIGHT_ABORT_REQUEST': lambda request: request.resource_type in ["image", "stylesheet", "font", "media"],
@@ -45,6 +57,13 @@ class StfJurisprudenciaSpider(scrapy.Spider):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+        # Load query array from JSON file
+        self.query_array = self.load_query_array()
+        self.current_query_info = None
+        
+        # Generate start_urls from query array
+        self.start_urls = [item['url'] for item in self.query_array]
         
         # Check if we're in development mode
         # Can be set via environment variable or spider argument
@@ -82,12 +101,14 @@ class StfJurisprudenciaSpider(scrapy.Spider):
 
     def start_requests(self):
         """Generate requests with STF-optimized Playwright settings"""
-        for url in self.start_urls:
+        for query_info in self.query_array:
+            url = query_info['url']
             yield scrapy.Request(
                 url=url,
                 meta={
                     'playwright': True,
                     'playwright_include_page': True,
+                    'query_info': query_info,  # Pass query info to the request
                     'playwright_page_methods': [
                         PageMethod('wait_for_load_state', 'networkidle'),
                         # Try multiple selectors that might indicate loaded results
@@ -116,9 +137,13 @@ class StfJurisprudenciaSpider(scrapy.Spider):
     async def parse_stf_listing(self, response):
         """Parse STF search results page"""
         page = response.meta.get("playwright_page")
+        query_info = response.meta.get("query_info")
+        
+        # Store current query info for this request
+        self.current_query_info = query_info
 
         try:
-            self.logger.info(f"Parsing STF listing: {response.url}")
+            self.logger.info(f"Parsing STF listing for Article {query_info['artigo']}: {response.url}")
 
             # Wait for page to be fully interactive and check what we actually have
             await page.wait_for_function('''
@@ -299,6 +324,8 @@ class StfJurisprudenciaSpider(scrapy.Spider):
                     'source_url': response.url,
                     'scraped_at': datetime.now().isoformat(),
                     'item_index': i+1,
+                    'current_article': self.current_query_info.get('artigo', 'unknown') if hasattr(self, 'current_query_info') and self.current_query_info else 'unknown',
+                    'query_text': self.current_query_info.get('query', '') if hasattr(self, 'current_query_info') and self.current_query_info else '',
                 }
 
                 # If we have a decision data link, follow it to get detailed content
@@ -710,15 +737,18 @@ class StfJurisprudenciaSpider(scrapy.Spider):
         try:
             self.logger.info(f"🔽 Downloading RTF file from: {rtf_url}")
             
-            # Create download directory if it doesn't exist
-            download_dir = Path("data/rtf_files")
+            # Get current article number from item_data
+            current_article = item_data.get('current_article', 'unknown')
+            
+            # Create download directory with article-specific subdirectory
+            download_dir = Path(f"data/rtf_files/{current_article}")
             download_dir.mkdir(parents=True, exist_ok=True)
             self.logger.info(f"📂 Download directory: {download_dir.absolute()}")
             
-            # Generate filename from case number or timestamp
+            # Generate filename with article prefix and case number or timestamp
             case_number = item_data.get('case_number', 'unknown')
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{case_number}_{timestamp}.rtf"
+            filename = f"{current_article}_{case_number}_{timestamp}.rtf"
             file_path = download_dir / filename
             
             self.logger.info(f"📄 Target file path: {file_path.absolute()}")
@@ -762,11 +792,13 @@ class StfJurisprudenciaSpider(scrapy.Spider):
                         await download.save_as(str(file_path))
                         self.logger.info(f"💾 Saved with custom filename: {file_path}")
                     except Exception as save_error:
-                        # Try with suggested filename in same directory
-                        suggested_path = download_dir / download.suggested_filename
+                        # Try with suggested filename but add article prefix
+                        suggested_name = download.suggested_filename
+                        prefixed_name = f"{current_article}_{suggested_name}"
+                        suggested_path = download_dir / prefixed_name
                         await download.save_as(str(suggested_path))
                         file_path = suggested_path  # Update the path
-                        self.logger.info(f"💾 Saved with suggested filename: {file_path}")
+                        self.logger.info(f"💾 Saved with prefixed suggested filename: {file_path}")
                     
                     # Verify the file exists
                     if file_path.exists():
@@ -810,7 +842,10 @@ class StfJurisprudenciaSpider(scrapy.Spider):
                     
                     if existing_downloads:
                         download = existing_downloads[0]
-                        suggested_path = download_dir / download.suggested_filename
+                        # Add article prefix to suggested filename
+                        suggested_name = download.suggested_filename
+                        prefixed_name = f"{current_article}_{suggested_name}"
+                        suggested_path = download_dir / prefixed_name
                         await download.save_as(str(suggested_path))
                         
                         if suggested_path.exists():
@@ -926,8 +961,20 @@ class StfJurisprudenciaSpider(scrapy.Spider):
         """Create a legal document item"""
         item = JurisprudenciaItem()
 
-        # Map data to item fields
-        item['theme'] = 'stf_jurisprudencia'
+        # Map data to item fields with new structured naming
+        if self.current_query_info:
+            article_number = self.current_query_info.get('artigo', 'unknown')
+            query_text = self.current_query_info.get('query', '')
+            
+            item['cluster_name'] = f"art_{article_number}"
+            item['cluster_description'] = f"{query_text} (art. {article_number} do Código Penal)"
+            item['article_reference'] = f"CP art. {article_number}"
+            item['source'] = f"STF - {item['cluster_name']}"
+        else:
+            item['cluster_name'] = 'stf_jurisprudencia'
+            item['cluster_description'] = 'Jurisprudência STF'
+            item['article_reference'] = 'N/A'
+            item['source'] = 'STF'
         item['title'] = item_data.get('title', f"STF Item {item_data.get('item_index', 'Unknown')}")
         item['case_number'] = item_data.get('case_number', '')
         item['content'] = item_data.get('content', item_data.get('clipboard_content', ''))
@@ -935,9 +982,9 @@ class StfJurisprudenciaSpider(scrapy.Spider):
         item['tribunal'] = 'STF'
         item['legal_area'] = 'Penal'  # Based on search query
         
-        # Extract classe processual unificada from the search URL
-        search_url = getattr(self, 'start_urls', [''])[0] if hasattr(self, 'start_urls') else ''
-        item['classe_processual_unificada'] = get_classe_processual_from_url(search_url)
+        # Extract classe processual unificada from the current query URL
+        current_url = self.current_query_info['url'] if self.current_query_info else ''
+        item['classe_processual_unificada'] = get_classe_processual_from_url(current_url)
 
         # Extract fields from content
         content = item_data.get('content', item_data.get('clipboard_content', ''))

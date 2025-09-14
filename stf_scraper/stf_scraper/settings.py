@@ -137,13 +137,12 @@ RETRY_PRIORITY_ADJUST = -1
 # PIPELINE CONFIGURATION
 # ========================================
 
-# Configure item pipelines
+# Configure pipelines
 ITEM_PIPELINES = {
     'stf_scraper.pipelines.ValidationPipeline': 300,
-    'stf_scraper.pipelines.DuplicatesPipeline': 400,
-    'stf_scraper.pipelines.DateNormalizationPipeline': 500,
-    # 'stf_scraper.pipelines.JsonWriterPipeline': 600,  # Disabled - using FEEDS instead
-    'stf_scraper.pipelines.StatisticsPipeline': 700,
+    'stf_scraper.pipelines.ArticleBasedJsonWriterPipeline': 400,
+    'stf_scraper.pipelines.StatisticsPipeline': 800,
+    # 'stf_scraper.pipelines.JsonWriterPipeline': 600,  # Disabled - using ArticleBasedJsonWriterPipeline instead
 }
 
 # ========================================
@@ -179,30 +178,6 @@ LOG_FILE = 'logs/scrapy.log'
 
 # Create logs directory if it doesn't exist
 Path('logs').mkdir(exist_ok=True)
-
-# ========================================
-# OUTPUT FEEDS CONFIGURATION
-# ========================================
-
-# Configure output feeds for different formats
-FEEDS = {
-    'data/%(name)s/%(name)s_%(time)s.jsonl': {
-        'format': 'jsonlines',
-        'encoding': 'utf8',
-        'store_empty': False,
-        'fields': [
-            'theme', 'title', 'case_number', 'classe_processual_unificada', 
-            'content', 'url', 'tribunal', 'legal_area',
-            'relator', 'decision_type', 'publication_date', 'decision_date',
-            'partes', 'decision', 'legislacao',
-            'numero_unico', 'rtf_url', 'rtf_file_path',
-            'content_quality'
-        ],
-        'item_export_kwargs': {
-            'ensure_ascii': False,
-        },
-    }
-}
 
 # ========================================
 # CUSTOM SETTINGS

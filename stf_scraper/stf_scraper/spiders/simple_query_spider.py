@@ -2,6 +2,7 @@ import scrapy
 from scrapy_playwright.page import PageMethod
 import json
 import os
+import re
 
 class SimpleQuerySpider(scrapy.Spider):
     name = "simple_query_spider"
@@ -108,8 +109,19 @@ class SimpleQuerySpider(scrapy.Spider):
                 # Get the current URL
                 current_url = page.url
                 
-                # Append result
-                result = {"query": query, "url": current_url}
+                # Replace 'acordaos' with 'decisoes' in the URL
+                current_url = current_url.replace('base=acordaos', 'base=decisoes')
+                
+                # Extract article number from query using regex
+                artigo_match = re.search(r'artigo\s+(\d+(?:-[A-Z])?)', query, re.IGNORECASE)
+                artigo = artigo_match.group(1) if artigo_match else None
+                
+                # Append result with new structure
+                result = {
+                    "query": query,
+                    "artigo": artigo,
+                    "url": current_url
+                }
                 self.results.append(result)
                 
                 # Save results immediately (append mode)
