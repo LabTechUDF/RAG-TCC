@@ -59,8 +59,17 @@ class StfJurisprudenciaSpider(scrapy.Spider):
         'CONCURRENT_REQUESTS': 1,  # Ensure only one request at a time to avoid browser conflicts
         'RETRY_TIMES': 3,
         'ROBOTSTXT_OBEY': False,
-        # Note: CLOSESPIDER_ITEMCOUNT will be set dynamically in __init__ based on dev mode
     }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Load query array from JSON file
+        self.query_array = self.load_query_array()
+        self.current_query_info = None
+        
+        # Generate start_urls from query array
+        self.start_urls = [item['url'] for item in self.query_array]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -95,16 +104,8 @@ class StfJurisprudenciaSpider(scrapy.Spider):
                 del self.custom_settings['CLOSESPIDER_ITEMCOUNT']
 
     def yield_item_with_limit_check(self, item_data):
-        """Yield an item and check if we've reached the extraction limit (only in dev mode)"""
-        item = self.create_item(item_data)
-        
-        # Only check limit in development mode
-        if self.dev_mode and self.max_items is not None:
-            if self.items_extracted >= self.max_items:
-                self.logger.info(f"🏁 DEV MODE: Reached maximum items limit ({self.max_items}). Closing spider.")
-                raise CloseSpider(f"DEV MODE: Reached maximum items limit: {self.max_items}")
-        
-        return item
+        """Create and yield an item"""
+        return self.create_item(item_data)
 
     def start_requests(self):
         """Generate requests with STF-optimized Playwright settings"""

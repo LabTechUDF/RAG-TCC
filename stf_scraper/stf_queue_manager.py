@@ -215,7 +215,7 @@ class STFQueryQueue:
             self.logger.error(f"Error creating single query file: {e}")
             return False
     
-    def run_single_spider(self, query: Dict, dry_run: bool = False, show_browser: bool = False) -> bool:
+    def run_single_spider(self, query: Dict, show_browser: bool = False) -> bool:
         """Run spider with a single query"""
         article = query['artigo']
         
@@ -235,9 +235,6 @@ class STFQueryQueue:
                 '-a', f'query_file={temp_file}',
                 '-L', 'INFO'
             ]
-            
-            if dry_run:
-                cmd.extend(['-s', 'DRY_RUN=true'])
             
             if show_browser:
                 cmd.extend(['-s', 'PLAYWRIGHT_LAUNCH_OPTIONS={"headless": false}'])
@@ -282,7 +279,7 @@ class STFQueryQueue:
             except Exception as e:
                 self.logger.warning(f"Failed to clean up temp file: {e}")
     
-    def process_queue(self, dry_run: bool = False, show_browser: bool = False) -> Dict:
+    def process_queue(self, show_browser: bool = False) -> Dict:
         """Process all queries in the queue sequentially (thread-safe version)"""
         start_time = datetime.now()
         
@@ -306,7 +303,7 @@ class STFQueryQueue:
             self.logger.info(f"📋 Processing Article {article} ({processed_count}/{total_queries})")
             
             # Run spider for this single query
-            success = self.run_single_spider(query, dry_run, show_browser)
+            success = self.run_single_spider(query, show_browser)
             
             if success:
                 self.logger.info(f"✅ Article {article}: Processing completed")
@@ -335,7 +332,7 @@ class STFQueryQueue:
         self.print_final_report(report)
         return report
     
-    def process_single_query(self, dry_run: bool = False, show_browser: bool = False) -> Optional[Dict]:
+    def process_single_query(self, show_browser: bool = False) -> Optional[Dict]:
         """Process a single query from the queue (for concurrent processing)"""
         query = self.get_next_query()
         if query is None:
@@ -344,7 +341,7 @@ class STFQueryQueue:
         article = query['artigo']
         self.logger.info(f"🎯 Worker processing Article {article}")
         
-        success = self.run_single_spider(query, dry_run, show_browser)
+        success = self.run_single_spider(query, show_browser)
         
         result = {
             'query': query,
@@ -462,7 +459,7 @@ class STFQueryQueue:
         return results
 
 
-def run_stf_queue_based(project_root: Path, query_file: Path, dry_run: bool = False, show_browser: bool = False) -> Dict:
+def run_stf_queue_based(project_root: Path, query_file: Path, show_browser: bool = False) -> Dict:
     """
     Main function to run STF scraping with queue-based architecture
     """
@@ -473,7 +470,7 @@ def run_stf_queue_based(project_root: Path, query_file: Path, dry_run: bool = Fa
         return {'error': 'Failed to load queries'}
     
     # Process all queries sequentially
-    report = queue_manager.process_queue(dry_run, show_browser)
+    report = queue_manager.process_queue(show_browser)
     
     # Count extracted items
     queue_manager.count_extracted_items()
@@ -487,5 +484,5 @@ if __name__ == '__main__':
     query_file = project_root / 'test_queries.json'
     
     print("🧪 Testing STF Queue System")
-    report = run_stf_queue_based(project_root, query_file, dry_run=True)
+    report = run_stf_queue_based(project_root, query_file)
     print(f"Test completed: {report['successful']}/{report['total_queries']} successful")

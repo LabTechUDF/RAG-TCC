@@ -114,12 +114,12 @@ DEFAULT_REQUEST_HEADERS = {
 
 # Enable or disable spider middlewares
 SPIDER_MIDDLEWARES = {
-    'stf_scraper.middlewares.LegalScraperSpiderMiddleware': 543,
+    'stf_scraper.middlewares.STFSpiderMiddleware': 543,
 }
 
 # Enable or disable downloader middlewares
 DOWNLOADER_MIDDLEWARES = {
-    'stf_scraper.middlewares.LegalScraperDownloaderMiddleware': 543,
+    'stf_scraper.middlewares.STFDownloaderMiddleware': 543,
     'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
     'scrapy.downloadermiddlewares.retry.RetryMiddleware': 550,
 }

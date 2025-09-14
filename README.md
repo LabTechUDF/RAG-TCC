@@ -1,28 +1,20 @@
-# 🏛️ STF Legal Content Scraper
+# 🏛️ STF Queue-Based Legal Content Scraper
 
-A web scraper for Brazilian Supreme Court (STF) legal decisions using **Scrapy** and **Playwright**.
+A thread-safe web scraper for Brazilian Supreme Court (STF) legal decisions using **Scrapy**, **Playwright**, and **queue-based architecture**.
 
-> **Status**: Working STF scraper that extracts legal decisions about criminal law (estelionato previdenciário - art. 171 §3).
+> **Status**: Production-ready STF scraper with concurrent queue processing for criminal law decisions.
 
-## 🏗️ Architecture
+## 🏗️ Clean Architecture
 
-### **Spiders**
-Extract data from websites. We have:
-- `stf_jurisprudencia` - Extracts STF legal decisions (working)
+### **Queue-Based Processing**
+- **STFQueueManager**: Thread-safe queue management with fcntl file locking
+- **Sequential Processing**: Safe, one-at-a-time query processing
+- **Concurrent Processing**: Multi-worker concurrent processing with race condition protection
 
-### **Items** 
-Define data structure for scraped content (legal documents with title, content, case number, etc.)
-
-### **Pipelines**
-Process scraped data:
-- **ValidationPipeline** - Validates required fields
-- **DuplicatesPipeline** - Removes duplicate content
-
-### **Middlewares**
-Handle requests/responses between spiders and websites (headers, retries, etc.)
-
-### **Settings**
-Configure Playwright browser, delays, file outputs, etc.
+### **Core Components**
+- `stf_jurisprudencia` - STF legal decisions spider (production-ready)
+- `simple_query_spider` - Query URL generator (creates query_links.json)
+- **Thread-safe pipelines**: Article-based JSON writer, validation, deduplication
 
 ## 🚀 How to Run
 
@@ -32,52 +24,71 @@ Configure Playwright browser, delays, file outputs, etc.
 
 ### **Setup**
 ```bash
-# Install dependencies
+# Install dependencies  
 poetry install
 
 # Install browser
 poetry run playwright install chromium
 ```
 
-### **Run Scrapers**
+### **Queue-Based Commands**
 ```bash
 # Go to scraper directory
 cd stf_scraper
 
-# List available spiders
-poetry run python manage.py list
+# Sequential processing (safe, single-threaded)
+python manage.py sequential
 
-# Run STF jurisprudência scraper (working)
-poetry run python manage.py run stf_jurisprudencia
+# Concurrent processing (3 workers by default)
+python manage.py concurrent --workers 3
 
-# Run with dry-run (no data saved, just testing)
-poetry run python manage.py run stf_jurisprudencia --dry-run
+# Show current queue status  
+python manage.py status
 
-# Run with browser visible (for debugging)
-poetry run python manage.py run stf_jurisprudencia --show-browser
+# Clean up queue files
+python manage.py cleanup
 
-# Run directly with scrapy
-poetry run scrapy crawl stf_jurisprudencia
+# Show browser for debugging
+python manage.py sequential --show-browser
+```
 
-# Run with custom settings
-poetry run scrapy crawl stf_jurisprudencia -s DOWNLOAD_DELAY=5
-
-# Run with full INFO in dev mode
-ENV=dev poetry run scrapy crawl stf_jurisprudencia -a dev_mode=true -s CLOSESPIDER_ITEMCOUNT=2 -L INFO
+### **Development Helper**
+```bash
+# Use development script
+./scripts/dev.sh sequential
+./scripts/dev.sh concurrent  
+./scripts/dev.sh status
 ```
 
 ### **Output**
-Data saved to `stf_scraper/data/stf_jurisprudencia/` as JSON files with STF legal decisions.
+Data organized by article number in `stf_scraper/data/stf_jurisprudencia/` with:
+- **JSONL files**: Legal decisions by article (art_312/, art_323/, etc.)  
+- **RTF files**: Original STF documents organized by article number
+- **Thread-safe processing**: No duplicate queries or race conditions
 
-## 📁 Structure
+## 📁 Clean Structure
 ```
 stf_scraper/
+├── manage.py                    # Clean queue-based CLI
+├── stf_queue_manager.py        # Thread-safe queue processing
 ├── stf_scraper/
-│   ├── spiders/          # Data extraction logic
-│   ├── items.py          # Data structure definitions  
-│   ├── pipelines.py      # Data processing
-│   ├── middlewares.py    # Request/response handling
-│   └── settings.py       # Configuration
-├── data/                 # Scraped data output
-└── manage.py             # Management script
+│   ├── spiders/
+│   │   ├── stf_jurisprudencia.py    # Main STF spider
+│   │   └── simple_query_spider.py   # Query generator
+│   ├── items.py                # Data structure definitions
+│   ├── pipelines.py           # Article-based processing
+│   ├── middlewares.py         # Simplified middlewares  
+│   └── settings.py            # Playwright configuration
+├── data/                      # Organized scraped data
+└── configs/
+    └── queries.txt           # Source queries for processing
 ```
+
+## 🎯 Key Features
+
+✅ **Thread-Safe**: fcntl file locking prevents race conditions  
+✅ **Queue-Based**: Clean separation between queue management and spider execution  
+✅ **Concurrent**: Multi-worker processing with configurable worker count  
+✅ **Production-Ready**: No development modes, clean production focus  
+✅ **Organized Output**: Data organized by article number automatically  
+✅ **Resume Support**: Can resume interrupted processing from queue state

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Brazilian Legal Scraper - Development Script
+# STF Queue-Based Scraper - Development Script
 
 set -e
 
@@ -10,36 +10,28 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Add Poetry to PATH
-export PATH="$HOME/Library/Python/3.12/bin:$PATH"
-
 print_help() {
-    echo -e "${BLUE}�️ STF Legal Scraper - Development Commands${NC}"
+    echo -e "${BLUE}🔧 STF Queue-Based Scraper - Development Commands${NC}"
     echo "=================================================="
     echo ""
     echo "Usage: ./scripts/dev.sh <command>"
     echo ""
     echo "Available commands:"
-    echo -e "  ${GREEN}install${NC}     Install dependencies with Poetry"
-    echo -e "  ${GREEN}shell${NC}       Activate Poetry shell"
-    echo -e "  ${GREEN}list${NC}        List available STF scrapers"
-    echo -e "  ${GREEN}test${NC}        Run dry-run test for STF scrapers"
-    echo -e "  ${GREEN}dev${NC}         Run scraper in development mode (5 items limit)"
-    echo -e "  ${GREEN}prod${NC}        Run scraper in production mode (no limit)"
-    echo -e "  ${GREEN}lint${NC}        Run code linting (black, isort, flake8)"
-    echo -e "  ${GREEN}format${NC}      Format code with black and isort"
-    echo -e "  ${GREEN}run${NC}         Run specific scraper (usage: ./dev.sh run <spider> [args])"
-    echo -e "  ${GREEN}stats${NC}       Show scraping statistics"
-    echo -e "  ${GREEN}clean${NC}       Clean data and cache files"
+    echo -e "  ${GREEN}install${NC}        Install dependencies with Poetry"
+    echo -e "  ${GREEN}shell${NC}          Activate Poetry shell"
+    echo -e "  ${GREEN}sequential${NC}     Run sequential queue processing"
+    echo -e "  ${GREEN}concurrent${NC}     Run concurrent queue processing (3 workers)"
+    echo -e "  ${GREEN}status${NC}         Show current queue status"
+    echo -e "  ${GREEN}cleanup${NC}        Clean up queue files"
+    echo -e "  ${GREEN}format${NC}         Format code with black and isort"
+    echo -e "  ${GREEN}clean${NC}          Clean data and cache files"
     echo ""
     echo "Examples:"
     echo "  ./scripts/dev.sh install"
-    echo "  ./scripts/dev.sh dev stf_jurisprudencia"
-    echo "  ./scripts/dev.sh prod stf_jurisprudencia"
-    echo "  ./scripts/dev.sh run stf_jurisprudencia"
-    echo "  ./scripts/dev.sh run stf_jurisprudencia -a query=\"homicídio doloso\""
-    echo "  ./scripts/dev.sh test"
-    echo "  ./scripts/dev.sh lint"
+    echo "  ./scripts/dev.sh sequential"
+    echo "  ./scripts/dev.sh concurrent"
+    echo "  ./scripts/dev.sh status"
+    echo "  ./scripts/dev.sh cleanup"
 }
 
 case "$1" in
@@ -58,78 +50,38 @@ case "$1" in
         poetry shell
         ;;
     
-    list)
-        echo -e "${BLUE}📚 Available STF scrapers:${NC}"
-        cd stf_scraper && poetry run python manage.py list
+    sequential)
+        echo -e "${BLUE}🎯 Running sequential queue processing...${NC}"
+        cd stf_scraper && python manage.py sequential
         ;;
     
-    test)
-        echo -e "${BLUE}🧪 Running dry-run tests for STF scrapers...${NC}"
-        cd stf_scraper && poetry run python manage.py run stf_jurisprudencia --dry-run
+    concurrent)
+        echo -e "${BLUE}🎯 Running concurrent queue processing...${NC}"
+        cd stf_scraper && python manage.py concurrent --workers 3
         ;;
     
-    dev)
-        if [ -z "$2" ]; then
-            echo -e "${RED}❌ Error: Please specify a spider name${NC}"
-            echo "Usage: ./dev.sh dev <spider>"
-            echo "Available spiders: stf_jurisprudencia"
-            exit 1
-        fi
-        
-        echo -e "${BLUE}🚧 Running $2 spider in DEVELOPMENT mode (5 items limit)...${NC}"
-        cd stf_scraper && poetry run scrapy crawl "$2" -a dev_mode=true
-        echo -e "${GREEN}✅ Development run completed - check data/stf_jurisprudencia/ for results${NC}"
+    status)
+        echo -e "${BLUE}📊 Checking queue status...${NC}"
+        cd stf_scraper && python manage.py status
         ;;
     
-    prod)
-        if [ -z "$2" ]; then
-            echo -e "${RED}❌ Error: Please specify a spider name${NC}"
-            echo "Usage: ./dev.sh prod <spider>"
-            echo "Available spiders: stf_jurisprudencia"
-            exit 1
-        fi
-        
-        echo -e "${BLUE}🚀 Running $2 spider in PRODUCTION mode (no limit)...${NC}"
-        cd stf_scraper && poetry run scrapy crawl "$2"
-        echo -e "${GREEN}✅ Production run completed - check data/ for results${NC}"
-        ;;
-    
-    lint)
-        echo -e "${BLUE}🔍 Running code linting...${NC}"
-        poetry run flake8 stf_scraper/
-        echo -e "${GREEN}✅ Linting completed${NC}"
+    cleanup)
+        echo -e "${BLUE}🧹 Cleaning up queue files...${NC}"
+        cd stf_scraper && python manage.py cleanup
         ;;
     
     format)
         echo -e "${BLUE}🎨 Formatting code...${NC}"
-        poetry run black stf_scraper/
-        poetry run isort stf_scraper/
+        poetry run black .
+        poetry run isort .
         echo -e "${GREEN}✅ Code formatted${NC}"
         ;;
     
-    run)
-        if [ -z "$2" ]; then
-            echo -e "${RED}❌ Error: Please specify a spider name${NC}"
-            echo "Usage: ./dev.sh run <spider> [args]"
-            echo "Available spiders: stf_jurisprudencia"
-            echo ""
-            echo "Tip: Use './dev.sh dev <spider>' for development mode (5 items limit)"
-            echo "     Use './dev.sh prod <spider>' for production mode (no limit)"
-            exit 1
-        fi
-        
-        echo -e "${BLUE}🚀 Running $2 spider with custom arguments...${NC}"
-        cd stf_scraper && poetry run scrapy crawl "${@:2}"
-        ;;
-    
-    stats)
-        echo -e "${BLUE}📊 STF scraping statistics:${NC}"
-        cd stf_scraper && poetry run python manage.py stats
-        ;;
-    
     clean)
-        echo -e "${BLUE}🧹 Cleaning data and cache...${NC}"
-        cd stf_scraper && poetry run python manage.py clean
+        echo -e "${BLUE}🧹 Cleaning data and cache files...${NC}"
+        find . -name "*.pyc" -delete
+        find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+        echo -e "${GREEN}✅ Cleanup completed${NC}"
         ;;
     
     help|--help|-h|"")
@@ -142,4 +94,4 @@ case "$1" in
         print_help
         exit 1
         ;;
-esac 
+esac
