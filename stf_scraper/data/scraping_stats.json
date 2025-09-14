@@ -1,0 +1,19 @@
+{
+  "total_items": 36,
+  "items_by_theme": {
+    "art_205": 36
+  },
+  "items_by_quality": {
+    "high": 36,
+    "medium": 0,
+    "low": 0
+  },
+  "items_by_classe": {
+    "null": 36
+  },
+  "items_with_relator": 36,
+  "items_with_content": 36,
+  "start_time": "2025-09-14T11:52:25.646707",
+  "end_time": "2025-09-14T12:46:21.106969",
+  "duration": 3235.460262
+}
