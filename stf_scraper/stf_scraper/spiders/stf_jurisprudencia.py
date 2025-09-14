@@ -29,7 +29,14 @@ class StfJurisprudenciaSpider(scrapy.Spider):
 
     def load_query_array(self):
         """Load query array from JSON file"""
-        query_file = Path(__file__).parent.parent.parent / 'data' / 'simple_query_spider' / 'query_links.json'
+        # Check if custom query file is provided via settings
+        custom_query_file = getattr(self, 'query_file', None)
+        
+        if custom_query_file:
+            query_file = Path(custom_query_file)
+        else:
+            # Default query file path
+            query_file = Path(__file__).parent.parent.parent / 'data' / 'simple_query_spider' / 'query_links.json'
         
         if not query_file.exists():
             self.logger.error(f"Query file not found: {query_file}")
@@ -485,6 +492,150 @@ class StfJurisprudenciaSpider(scrapy.Spider):
                 fallback_text = ' '.join([c.strip() for c in fallback_content if c.strip()])[:5000]  # Limit to first 5000 chars
                 item_data['content'] = fallback_text or "Content extraction failed"
                 item_data['extraction_method'] = 'fallback-detail-page'
+                self.logger.warning("❌ Clipboard extraction failed, using fallback content")
+
+            # Add the new extracted fields
+            item_data['partes'] = partes_text
+            item_data['decision'] = decision_text
+            item_data['legislacao'] = legislacao_text
+            item_data['detail_url'] = response.url
+
+            # Log what we extracted
+            self.logger.info(f"Extracted details - Partes: {'✅' if partes_text else '❌'}, Decision: {'✅' if decision_text else '❌'}, Legislacao: {'✅' if legislacao_text else '❌'}")
+
+            # Now try to extract the RTF file by following the process tracking flow
+            self.logger.info(f"🔍 Before RTF extraction - rtf_url: {item_data.get('rtf_url', 'NOT_SET')}, rtf_file_path: {item_data.get('rtf_file_path', 'NOT_SET')}")
+            await self.extract_rtf_file(page, item_data, response)
+            self.logger.info(f"🔍 After RTF extraction - rtf_url: {item_data.get('rtf_url', 'NOT_SET')}, rtf_file_path: {item_data.get('rtf_file_path', 'NOT_SET')}")
+
+            yield self.yield_item_with_limit_check(item_data)
+
+        except Exception as e:
+            self.logger.error(f"Error parsing decision detail: {e}")
+            # Still try to yield the basic item
+            item_data['content'] = f"Error extracting detailed content: {str(e)}"
+            item_data['extraction_method'] = 'error'
+            yield self.yield_item_with_limit_check(item_data)
+
+        finally:
+            if page:
+                await page.close()
+
+    async def parse_decision_detail(self, response):
+        """Parse the detailed decision page to extract full content"""
+        page = response.meta.get("playwright_page")
+        item_data = response.meta.get('item_data', {})
+
+        try:
+            self.logger.info(f"Parsing decision detail page: {response.url}")
+
+            # Wait for page to be fully loaded
+            await page.wait_for_function('''
+                () => {
+                    return document.readyState === 'complete' &&
+                           (document.querySelector('#decisaoTexto') ||
+                            document.querySelector('.header-icons') ||
+                            document.querySelector('.mat-icon') !== null);
+                }
+            ''', timeout=15000)
+
+            # Extract full content using the clipboard button
+            clipboard_content = await page.evaluate('''
+                (async () => {
+                    // Look for the clipboard button in header-icons section
+                    const headerIcons = document.querySelector('.header-icons.hide-in-print');
+                    let clipboardBtn = null;
+                    
+                    if (headerIcons) {
+                        // Try to find the clipboard icon by different methods
+                        clipboardBtn = headerIcons.querySelector('mat-icon[mattooltip*="Copiar"]') ||
+                                     headerIcons.querySelector('mat-icon:contains("file_copy")') ||
+                                     headerIcons.querySelector('mat-icon.clipboard-result') ||
+                                     Array.from(headerIcons.querySelectorAll('mat-icon')).find(icon => 
+                                         icon.textContent.trim() === 'file_copy' || 
+                                         icon.getAttribute('mattooltip')?.includes('Copiar')
+                                     );
+                    }
+                    
+                    // Fallback: try xpath or other selectors
+                    if (!clipboardBtn) {
+                        const xpath = '/html/body/app-root/app-home/main/app-search-detail/div/div/div[1]/div/div[1]/div[2]/div/mat-icon[4]';
+                        const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+                        clipboardBtn = result.singleNodeValue;
+                    }
+                    
+                    if (!clipboardBtn) {
+                        console.log('No clipboard button found');
+                        return null;
+                    }
+                    
+                    // Store original clipboard content
+                    let originalClipboard = '';
+                    try {
+                        originalClipboard = await navigator.clipboard.readText();
+                    } catch(e) {
+                        console.log('Could not read original clipboard:', e);
+                    }
+                    
+                    // Click the clipboard button
+                    console.log('Clicking clipboard button...');
+                    clipboardBtn.click();
+                    
+                    // Wait for clipboard to be populated
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    // Try to read the clipboard content
+                    try {
+                        const clipboardText = await navigator.clipboard.readText();
+                        if (clipboardText && clipboardText !== originalClipboard) {
+                            console.log('Successfully copied content to clipboard:', clipboardText.length, 'characters');
+                            return {
+                                content: clipboardText,
+                                source: 'clipboard-detail-page'
+                            };
+                        }
+                    } catch(e) {
+                        console.log('Could not read clipboard after click:', e);
+                    }
+                    
+                    return null;
+                })();
+            ''')
+
+            # Extract specific content sections from the page
+            partes_text = await page.evaluate('''
+                () => {
+                    const partesElement = document.querySelector('#partesTexto');
+                    return partesElement ? partesElement.textContent.trim() : '';
+                }
+            ''')
+
+            decision_text = await page.evaluate('''
+                () => {
+                    const decisionElement = document.querySelector('#decisaoTexto');
+                    return decisionElement ? decisionElement.textContent.trim() : '';
+                }
+            ''')
+
+            legislacao_text = await page.evaluate('''
+                () => {
+                    const legislacaoElement = document.querySelector('#legislacaoTexto');
+                    return legislacaoElement ? legislacaoElement.textContent.trim() : '';
+                }
+            ''')
+
+            # Fallback content extraction if clipboard fails
+            if clipboard_content and clipboard_content.get('content'):
+                content = clipboard_content['content']
+                extraction_method = clipboard_content['source']
+                self.logger.info(f"✅ Clipboard extraction successful: {len(content)} characters")
+                item_data['content'] = content
+                item_data['extraction_method'] = extraction_method
+            else:
+                # Use fallback content if clipboard failed
+                fallback_content = f"Partes: {partes_text}\n\nDecisão: {decision_text}\n\nLegislação: {legislacao_text}"
+                item_data['content'] = fallback_content
+                item_data['extraction_method'] = 'fallback-sections'
                 self.logger.warning("❌ Clipboard extraction failed, using fallback content")
 
             # Add the new extracted fields
