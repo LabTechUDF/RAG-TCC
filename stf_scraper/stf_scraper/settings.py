@@ -55,10 +55,10 @@ PLAYWRIGHT_DEFAULT_CONTEXT_OPTIONS = {
     "ignore_https_errors": True,  # Ignore HTTPS errors
 }
 
-# Playwright timeouts and optimization for sequential processing
-PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT = 30000  # 30 seconds
-PLAYWRIGHT_MAX_PAGES_PER_CONTEXT = 1  # Use only 1 page per context to prevent interference
-PLAYWRIGHT_MAX_CONTEXTS = 1  # Use only 1 context to prevent RTF download conflicts
+# Playwright timeouts and optimization for 3 parallel groups
+PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT = 30000  # 30 seconds for safer navigation with slow government sites
+PLAYWRIGHT_MAX_PAGES_PER_CONTEXT = 1  # EXACTLY 1 page per context for isolated groups
+PLAYWRIGHT_MAX_CONTEXTS = 3  # Exactly 3 contexts for 3 parallel groups
 
 # Browser contexts for different legal sites
 PLAYWRIGHT_CONTEXTS = {
@@ -83,13 +83,13 @@ PLAYWRIGHT_ABORT_REQUEST = lambda request: request.resource_type in ["image", "s
 # Obey robots.txt rules for Brazilian legal sites (disabled for legal research)
 ROBOTSTXT_OBEY = False
 
-# Configure a delay for requests (be respectful to legal sites and allow RTF processing)
-DOWNLOAD_DELAY = 5  # Increased delay to allow sequential RTF processing
-RANDOMIZE_DOWNLOAD_DELAY = 0.5
+# Configure a delay for requests and enable native Scrapy parallelism
+DOWNLOAD_DELAY = 1  # Safer delay to avoid IP blocking (2 seconds between requests)
+RANDOMIZE_DOWNLOAD_DELAY = 0.3  # Add randomization to appear more human-like
 
-# Limit concurrent requests to avoid overwhelming legal sites and prevent RTF download interference
-CONCURRENT_REQUESTS = 1
-CONCURRENT_REQUESTS_PER_DOMAIN = 1  # Only 1 request per domain at a time
+# Enable concurrent requests using native Scrapy parallelism  
+CONCURRENT_REQUESTS = 3  # 3 concurrent requests for 3 parallel groups
+CONCURRENT_REQUESTS_PER_DOMAIN = 3  # 3 requests per domain for safer processing
 
 # ========================================
 # USER AGENT AND HEADERS
@@ -149,11 +149,11 @@ ITEM_PIPELINES = {
 # AUTOTHROTTLE CONFIGURATION
 # ========================================
 
-# Enable AutoThrottle for adaptive delays
+# Enable AutoThrottle for adaptive delays with safer concurrency
 AUTOTHROTTLE_ENABLED = True
-AUTOTHROTTLE_START_DELAY = 1
-AUTOTHROTTLE_MAX_DELAY = 10
-AUTOTHROTTLE_TARGET_CONCURRENCY = 2.0
+AUTOTHROTTLE_START_DELAY = 1 # Start with 2 second delay for safety
+AUTOTHROTTLE_MAX_DELAY = 10  # Allow up to 10 seconds delay if needed
+AUTOTHROTTLE_TARGET_CONCURRENCY = 2.0  # Target 3 concurrent requests
 AUTOTHROTTLE_DEBUG = False
 
 # ========================================

@@ -199,6 +199,39 @@ class STFQueryQueue:
         
         finally:
             self._release_lock()
+
+    def check_for_groups(self, article_id: str) -> List[Path]:
+        """Check if group files exist for a specific article"""
+        groups_dir = self.project_root / "temp_queue" / "groups"
+        if not groups_dir.exists():
+            return []
+        
+        # Look for group files for this article
+        group_files = list(groups_dir.glob(f"group_*_article_{article_id}.json"))
+        return sorted(group_files)
+    
+    def load_group_for_worker(self, worker_id: int, article_id: str) -> Optional[Dict]:
+        """Load specific group for a worker"""
+        groups_dir = self.project_root / "temp_queue" / "groups"
+        
+        # Group files are numbered starting from 1, but worker_id starts from 0
+        group_number = worker_id + 1
+        group_file = groups_dir / f"group_{group_number}_article_{article_id}.json"
+        
+        if not group_file.exists():
+            self.logger.warning(f"Group file not found for Worker-{worker_id}: {group_file}")
+            return None
+        
+        try:
+            with open(group_file, 'r', encoding='utf-8') as f:
+                group_data = json.load(f)
+            
+            self.logger.info(f"📁 Worker-{worker_id} loaded Group {group_number}: {len(group_data.get('pages', []))} pages")
+            return group_data
+            
+        except Exception as e:
+            self.logger.error(f"Failed to load group file {group_file}: {e}")
+            return None
     
     def create_single_query_file(self, query: Dict, temp_file_path: Path) -> bool:
         """Create a temporary file with a single query for the spider"""
@@ -278,6 +311,142 @@ class STFQueryQueue:
                     self.logger.debug(f"Cleaned up temp file: {temp_file}")
             except Exception as e:
                 self.logger.warning(f"Failed to clean up temp file: {e}")
+
+    def run_group_spider(self, group_data: Dict, show_browser: bool = False, worker_id: int = 0) -> bool:
+        """Run spider for a specific group of pages"""
+        article = group_data.get('article', 'unknown')
+        group_id = group_data.get('group_id', 0)
+        pages_count = len(group_data.get('pages', []))
+        
+        # Create temporary group file
+        temp_dir = self.project_root / 'temp_queue'
+        temp_file = temp_dir / f'group_{group_id}_article_{article}_{int(time.time())}.json'
+        
+        try:
+            self.logger.info(f"🚀 Worker-{worker_id} starting Group {group_id} for Article {article} ({pages_count} pages)")
+            
+            # Save group data to temp file
+            with open(temp_file, 'w', encoding='utf-8') as f:
+                json.dump(group_data, f, indent=2, ensure_ascii=False)
+            
+            # Build scrapy command for group processing
+            cmd = [
+                'scrapy', 'crawl', 'stf_jurisprudencia',
+                '-a', f'group_file={temp_file}',
+                '-a', f'worker_id={worker_id}',
+                '-L', 'INFO'
+            ]
+            
+            if show_browser:
+                cmd.extend(['-s', 'PLAYWRIGHT_LAUNCH_OPTIONS={"headless": false}'])
+            
+            # Run the command
+            self.logger.info(f"📋 Worker-{worker_id} executing: {' '.join(cmd)}")
+            result = subprocess.run(
+                cmd,
+                cwd=self.project_root,
+                capture_output=True,
+                text=True,
+                timeout=1800  # 30 minute timeout per group
+            )
+            
+            if result.returncode == 0:
+                self.logger.info(f"✅ Worker-{worker_id} Group {group_id}: Completed successfully ({pages_count} pages)")
+                return True
+            else:
+                self.logger.error(f"❌ Worker-{worker_id} Group {group_id}: Failed")
+                self.logger.error(f"   STDOUT: {result.stdout}")
+                self.logger.error(f"   STDERR: {result.stderr}")
+                return False
+                
+        except subprocess.TimeoutExpired:
+            self.logger.error(f"⏰ Worker-{worker_id} Group {group_id}: Timed out after 30 minutes")
+            return False
+            
+        except Exception as e:
+            self.logger.error(f"💥 Worker-{worker_id} Group {group_id}: Exception occurred: {e}")
+            return False
+            
+        finally:
+            # Clean up temporary file
+            try:
+                if temp_file.exists():
+                    temp_file.unlink()
+                    self.logger.debug(f"Worker-{worker_id} cleaned up temp file: {temp_file}")
+            except Exception as e:
+                self.logger.warning(f"Worker-{worker_id} failed to clean up temp file: {e}")
+    
+    def run_single_spider(self, query: Dict, show_browser: bool = False, discovery_mode: bool = False) -> bool:
+        """Run spider with a single query"""
+        article = query['artigo']
+        
+        # Create temporary query file
+        temp_dir = self.project_root / 'temp_queue'
+        temp_file = temp_dir / f'query_{article}_{int(time.time())}.json'
+        
+        try:
+            mode_text = "discovery" if discovery_mode else "processing"
+            self.logger.info(f"🚀 Starting spider for Article {article} ({mode_text} mode)")
+            
+            if not self.create_single_query_file(query, temp_file):
+                return False
+            
+            # Build scrapy command
+            cmd = [
+                'scrapy', 'crawl', 'stf_jurisprudencia',
+                '-a', f'query_file={temp_file}',
+                '-L', 'INFO'
+            ]
+            
+            if discovery_mode:
+                cmd.extend(['-a', 'discovery_mode=true'])
+            
+            if show_browser:
+                cmd.extend(['-s', 'PLAYWRIGHT_LAUNCH_OPTIONS={"headless": false}'])
+            
+            # Run the command
+            self.logger.info(f"📋 Executing: {' '.join(cmd)}")
+            result = subprocess.run(
+                cmd,
+                cwd=self.project_root,
+                capture_output=True,
+                text=True,
+                timeout=1800  # 30 minute timeout per query
+            )
+            
+            if result.returncode == 0:
+                self.logger.info(f"✅ Article {article}: Spider completed successfully ({mode_text} mode)")
+                if not discovery_mode:
+                    self.mark_query_completed(query, success=True)
+                return True
+            else:
+                self.logger.error(f"❌ Article {article}: Spider failed ({mode_text} mode)")
+                self.logger.error(f"   STDOUT: {result.stdout}")
+                self.logger.error(f"   STDERR: {result.stderr}")
+                if not discovery_mode:
+                    self.mark_query_completed(query, success=False, error=result.stderr)
+                return False
+                
+        except subprocess.TimeoutExpired:
+            self.logger.error(f"⏰ Article {article}: Spider timed out after 30 minutes ({mode_text} mode)")
+            if not discovery_mode:
+                self.mark_query_completed(query, success=False, error='Timeout after 30 minutes')
+            return False
+            
+        except Exception as e:
+            self.logger.error(f"💥 Article {article}: Exception occurred: {e} ({mode_text} mode)")
+            if not discovery_mode:
+                self.mark_query_completed(query, success=False, error=str(e))
+            return False
+            
+        finally:
+            # Clean up temporary file
+            try:
+                if temp_file.exists():
+                    temp_file.unlink()
+                    self.logger.debug(f"Cleaned up temp file: {temp_file}")
+            except Exception as e:
+                self.logger.warning(f"Failed to clean up temp file: {e}")
     
     def process_queue(self, show_browser: bool = False) -> Dict:
         """Process all queries in the queue sequentially (thread-safe version)"""
@@ -332,7 +501,7 @@ class STFQueryQueue:
         self.print_final_report(report)
         return report
     
-    def process_single_query(self, show_browser: bool = False) -> Optional[Dict]:
+    def process_single_query(self, show_browser: bool = False, worker_id: int = None) -> Optional[Dict]:
         """Process a single query from the queue (for concurrent processing)"""
         query = self.get_next_query()
         if query is None:
@@ -341,15 +510,99 @@ class STFQueryQueue:
         article = query['artigo']
         self.logger.info(f"🎯 Worker processing Article {article}")
         
-        success = self.run_single_spider(query, show_browser)
+        # First, run the discovery spider to generate group files
+        success = self.run_single_spider(query, show_browser, discovery_mode=True)
         
-        result = {
-            'query': query,
-            'success': success,
-            'processed_at': datetime.now().isoformat()
-        }
+        if not success:
+            self.logger.error(f"❌ Discovery failed for Article {article}")
+            return {
+                'query': query,
+                'success': False,
+                'processed_at': datetime.now().isoformat(),
+                'error': 'Discovery phase failed'
+            }
         
-        if success:
+        # Wait a moment for group files to be written
+        time.sleep(2)
+        
+        # Check if group files were generated
+        group_files = self.check_for_groups(article)
+        
+        if not group_files:
+            self.logger.warning(f"⚠️ No group files found for Article {article}, proceeding with original method")
+            # Fallback to original processing
+            success = self.run_single_spider(query, show_browser, discovery_mode=False)
+            return {
+                'query': query,
+                'success': success,
+                'processed_at': datetime.now().isoformat()
+            }
+        
+        self.logger.info(f"📁 Found {len(group_files)} group files for Article {article}")
+        
+        # Process each group with separate workers if we have multiple groups
+        if len(group_files) > 1:
+            self.logger.info(f"🚀 Starting parallel group processing for Article {article}")
+            
+            # Execute all 3 workers simultaneously using threading
+            import concurrent.futures
+            group_results = []
+            
+            def run_worker_group(group_idx, group_file):
+                """Run a single worker group"""
+                group_data = self.load_group_for_worker(group_idx, article)
+                if group_data:
+                    self.logger.info(f"🔥 Worker-{group_idx} starting Group {group_data['group_id']} SIMULTANEOUSLY")
+                    group_success = self.run_group_spider(group_data, show_browser, group_idx)
+                    return {
+                        'worker_id': group_idx,
+                        'group_id': group_data['group_id'],
+                        'success': group_success,
+                        'pages_count': len(group_data.get('pages', []))
+                    }
+                return None
+            
+            # Execute all workers simultaneously
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                # Submit all workers at the same time
+                future_to_worker = {
+                    executor.submit(run_worker_group, group_idx, group_file): group_idx 
+                    for group_idx, group_file in enumerate(group_files)
+                }
+                
+                # Collect results as they complete
+                for future in concurrent.futures.as_completed(future_to_worker):
+                    worker_id = future_to_worker[future]
+                    try:
+                        result = future.result()
+                        if result:
+                            group_results.append(result)
+                            self.logger.info(f"✅ Worker-{worker_id} completed Group {result['group_id']}")
+                    except Exception as e:
+                        self.logger.error(f"❌ Worker-{worker_id} failed: {e}")
+            
+            overall_success = all(result['success'] for result in group_results)
+            
+            result = {
+                'query': query,
+                'success': overall_success,
+                'processed_at': datetime.now().isoformat(),
+                'groups_processed': group_results,
+                'processing_mode': 'parallel_groups'
+            }
+        else:
+            # Single group, process normally
+            group_data = self.load_group_for_worker(0, article)
+            success = self.run_group_spider(group_data, show_browser, 0) if group_data else False
+            
+            result = {
+                'query': query,
+                'success': success,
+                'processed_at': datetime.now().isoformat(),
+                'processing_mode': 'single_group'
+            }
+        
+        if result['success']:
             self.logger.info(f"✅ Worker completed Article {article}")
         else:
             self.logger.error(f"❌ Worker failed Article {article}")
