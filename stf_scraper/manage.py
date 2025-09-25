@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from stf_queue_manager import run_stf_queue_based, STFQueryQueue
+from stf_scraper.stf_queue_manager import run_stf_queue_based, STFQueryQueue
 
 
 class STFQueueManager:
