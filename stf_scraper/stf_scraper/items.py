@@ -210,19 +210,6 @@ class JurisprudenciaItem(LegalDocumentItem):
         output_processor=TakeFirst()
     )
     
-    # RTF file fields for full decision documents
-    numero_unico = scrapy.Field(
-        output_processor=TakeFirst()
-    )
-    
-    rtf_url = scrapy.Field(
-        output_processor=TakeFirst()
-    )
-    
-    rtf_file_path = scrapy.Field(
-        output_processor=TakeFirst()
-    )
-    
     # Quality assessment score (calculated by pipeline)
     content_quality = scrapy.Field(
         output_processor=TakeFirst()
