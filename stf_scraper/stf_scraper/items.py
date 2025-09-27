@@ -210,6 +210,7 @@ class JurisprudenciaItem(LegalDocumentItem):
         output_processor=TakeFirst()
     )
     
+    
     # Quality assessment score (calculated by pipeline)
     content_quality = scrapy.Field(
         output_processor=TakeFirst()

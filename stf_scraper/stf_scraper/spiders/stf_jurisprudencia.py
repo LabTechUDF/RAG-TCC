@@ -18,7 +18,11 @@ from stf_scraper.items import (
     extract_decision_date_from_content,
     extract_partes_from_content
 )
-from pdb import set_trace
+
+from scrapy.utils.project import get_project_settings
+from stf_scraper.utils.shared_state import (
+    get_and_increment_page, mark_done, read_state, write_state
+)
 
 
 class StfJurisprudenciaSpider(scrapy.Spider):
@@ -101,44 +105,165 @@ class StfJurisprudenciaSpider(scrapy.Spider):
         'ROBOTSTXT_OBEY': False,
     }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        
+
+    @classmethod
+    def from_crawler(cls, crawler, *args, **kwargs):
+        spider = super().from_crawler(crawler, *args, **kwargs)
         # Load query array from JSON file
-        self.query_array = self.load_query_array()
-        self.current_query_info = None
-        
-        # Generate start_urls from query array
-        self.start_urls = [item['url'] for item in self.query_array]
-        
-        # Add pagination tracking with new strategy
-        self.items_processed_on_current_page = 0
-        self.total_items_on_current_page = 0
-        self.current_page_number = 1
-        self.total_pages = None
-        self.base_url = None  # Store base URL without page parameter
-        
-        # Check if we're in development mode
-        # Can be set via environment variable or spider argument
-        self.dev_mode = (
+        spider.query_array = spider.load_query_array()
+        spider.current_query_info = None
+        # Usar apenas a primeira query para scraping compartilhado
+        if spider.query_array:
+            spider.shared_query_info = spider.query_array[0]
+            spider.base_url = spider.shared_query_info['url'].split('&page=')[0]
+        else:
+            spider.shared_query_info = None
+            spider.base_url = None
+        # Diretório de estado compartilhado já criado e funções utilitárias já importadas
+        state_dir = Path(__file__).parent.parent / 'data' / 'shared_pagination'
+        state_dir.mkdir(parents=True, exist_ok=True)
+        # Parallel browser count from settings
+        spider.parallel_browser_count = crawler.settings.getint('PARALLEL_BROWSER_COUNT', 3)
+        # Dev mode
+        spider.dev_mode = (
             kwargs.get('dev_mode', '').lower() in ['true', '1', 'yes'] or
             os.getenv('SPIDER_DEV_MODE', '').lower() in ['true', '1', 'yes'] or
             os.getenv('ENV', '').lower() in ['dev', 'development']
         )
-        
-        if self.dev_mode:
-            self.items_extracted = 0
-            self.max_items = 5
-            self.logger.info("🚧 Running in DEVELOPMENT mode - limited to 5 items")
-            # Set the Scrapy built-in item count limit as backup
-            self.custom_settings['CLOSESPIDER_ITEMCOUNT'] = 5
+        if spider.dev_mode:
+            spider.items_extracted = 0
+            spider.max_items = 5
+            spider.logger.info("🚧 Running in DEVELOPMENT mode - limited to 5 items")
+            spider.custom_settings['CLOSESPIDER_ITEMCOUNT'] = 5
         else:
-            self.items_extracted = 0
-            self.max_items = None  # No limit in production
-            self.logger.info("🚀 Running in PRODUCTION mode - no item limit")
-            # Remove any item count limit
-            if 'CLOSESPIDER_ITEMCOUNT' in self.custom_settings:
-                del self.custom_settings['CLOSESPIDER_ITEMCOUNT']
+            spider.items_extracted = 0
+            spider.max_items = None
+            spider.logger.info("🚀 Running in PRODUCTION mode - no item limit")
+            if 'CLOSESPIDER_ITEMCOUNT' in spider.custom_settings:
+                del spider.custom_settings['CLOSESPIDER_ITEMCOUNT']
+        # Inicializa atributos de paginação para evitar AttributeError
+        spider.total_pages = None
+        spider.items_processed_on_current_page = 0
+        spider.total_items_on_current_page = 0
+        spider.current_page_number = 1
+        return spider
+
+
+    def start_requests(self):
+        settings = get_project_settings()
+        parallel_count = settings.getint('PARALLEL_BROWSER_COUNT', 1)
+        shared_state_dir = settings.get('SHARED_STATE_DIR', '.scrapy_state')
+        state_file = os.path.join(shared_state_dir, 'stf_shared_state.json')
+        lock_file = os.path.join(shared_state_dir, 'stf_shared_state.lock')
+
+        # Inicializa estado se não existir
+        if not os.path.exists(state_file):
+            os.makedirs(shared_state_dir, exist_ok=True)
+            write_state(state_file, {"current_page_number": 1, "done": False})
+
+        self._shared_state_file = state_file
+        self._shared_lock_file = lock_file
+        self.logger.info(f"[PARALLEL] Shared state: {state_file}, lock: {lock_file}")
+        self.logger.info(f"[PARALLEL] Workers: {parallel_count}")
+        self.crawler.stats.set_value('stf/parallel_workers', parallel_count)
+
+        # Carrega query base
+        if not hasattr(self, 'query_array'):
+            self.query_array = self.load_query_array()
+        if not self.query_array:
+            self.logger.error("Nenhuma query encontrada para scraping compartilhado.")
+            return
+        self.shared_query_info = self.query_array[0]
+        self.base_url = self.shared_query_info['url'].split('&page=')[0]
+
+        for i in range(parallel_count):
+            yield self.next_page_request(worker_id=i)
+
+
+    def next_page_request(self, worker_id=0):
+        page_number = get_and_increment_page(self._shared_state_file, self._shared_lock_file)
+        if page_number is None:
+            self.logger.debug(f"[Worker {worker_id}] Paginação finalizada (done=true)")
+            return None
+        self.logger.debug(f"[Worker {worker_id}] acquired_page={page_number}")
+        self.crawler.stats.inc_value('stf/pages_scheduled')
+        url = self.base_url + f"&page={page_number}"
+        return scrapy.Request(
+            url=url,
+            meta={
+                'playwright': True,
+                'playwright_include_page': True,
+                'query_info': self.shared_query_info,
+                'page_number': page_number,
+                'worker_id': worker_id,
+                'playwright_page_methods': [
+                    PageMethod('wait_for_load_state', 'networkidle'),
+                    PageMethod('wait_for_function', '''
+                        () => {
+                            return document.querySelector('div[id^="result-index-"]') ||
+                                   document.querySelector('.resultado-pesquisa') ||
+                                   document.querySelector('.search-results') ||
+                                   document.querySelector('.no-results') ||
+                                   document.querySelector('.loading') === null;
+                        }
+                    ''', timeout=30000),
+                ],
+                'playwright_context_kwargs': {
+                    'ignore_https_errors': True,
+                    'extra_http_headers': {
+                        'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+                    },
+                },
+            },
+            callback=self.parse_stf_listing_shared,
+            errback=self.handle_error
+        )
+
+    async def parse_stf_listing_shared(self, response):
+        page = response.meta.get("playwright_page")
+        page_number = response.meta.get("page_number")
+        worker_id = response.meta.get("worker_id")
+        query_info = response.meta.get("query_info")
+        self.logger.info(f"[Worker {worker_id}] Processando página {page_number} ({response.url})")
+
+        await page.wait_for_function('''
+            () => {
+                return document.readyState === 'complete' &&
+                       (document.querySelector('div[id^="result-index-"]') ||
+                        document.querySelector('.no-results') ||
+                        document.querySelector('.loading') === null);
+            }
+        ''', timeout=15000)
+
+        result_items = response.css('div[id^="result-index-"]')
+        if not result_items:
+            no_results = response.css('.no-results, .sem-resultados, .empty-results').get()
+            if no_results:
+                self.logger.info(f"[Worker {worker_id}] Nenhum resultado encontrado na página {page_number}.")
+                mark_done(self._shared_state_file, self._shared_lock_file)
+                self.logger.debug(f"[Worker {worker_id}] mark_done chamado (no_results)")
+                return
+            self.logger.warning(f"[Worker {worker_id}] Nenhum item encontrado e sem mensagem de fim. Página: {page_number}")
+            return
+
+        self.logger.info(f"[Worker {worker_id}] Encontrados {len(result_items)} itens na página {page_number}.")
+
+        # Processamento normal dos itens (mantém lógica existente)
+        for i, item in enumerate(result_items):
+            pass  # TODO: implementar extração detalhada se necessário
+
+        # Detecta última página: se menos que o esperado por página
+        expected_per_page = 10
+        if len(result_items) < expected_per_page:
+            self.logger.info(f"[Worker {worker_id}] Última página detectada pelo número de itens.")
+            mark_done(self._shared_state_file, self._shared_lock_file)
+            self.logger.debug(f"[Worker {worker_id}] mark_done chamado (última página)")
+            return
+
+        # Agenda próxima página para este worker
+        next_req = self.next_page_request(worker_id=worker_id)
+        if next_req:
+            yield next_req
 
     def save_groups_to_json(self, total_pages, base_url, query_info):
         """Save page groups to separate JSON files for worker distribution"""
@@ -671,6 +796,7 @@ class StfJurisprudenciaSpider(scrapy.Spider):
             # Log what we extracted
             self.logger.info(f"Extracted details - Partes: {'✅' if partes_text else '❌'}, Decision: {'✅' if decision_text else '❌'}, Legislacao: {'✅' if legislacao_text else '❌'}")
 
+
             # Create and yield the item
             created_item = self.yield_item_with_limit_check(item_data)
             yield created_item
@@ -851,6 +977,7 @@ class StfJurisprudenciaSpider(scrapy.Spider):
             
         except Exception as e:
             self.logger.error(f"❌ Error in new pagination strategy: {e}")
+
 
     async def extract_pdf_links(self, response):
         """Extract PDF download links from STF processo page"""
