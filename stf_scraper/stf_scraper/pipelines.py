@@ -55,8 +55,7 @@ class ArticleBasedJsonWriterPipeline:
         # Get or create file handle for this article
         file_key = article_number
         if file_key not in self.files:
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f"art_{article_number}_{self.spider_name}_{timestamp}.jsonl"
+            filename = f"art_{article_number}_{self.spider_name}.jsonl"
             file_path = article_dir / filename
             
             self.files[file_key] = open(file_path, 'w', encoding='utf-8')
