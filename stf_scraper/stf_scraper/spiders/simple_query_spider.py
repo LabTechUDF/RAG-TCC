@@ -139,20 +139,13 @@ class SimpleQuerySpider(scrapy.Spider):
         # Close the page after processing all queries
         await page.close()
 
+        # Handle pagination - follow 'next page' links
+        next_page = response.css('a.next::attr(href)').get()
+        if next_page:
+            yield response.follow(next_page, callback=self.parse, meta=response.meta)
+
     def save_results(self):
-        """Save results to JSON file"""
-        try:
-            # Ensure directory exists
-            os.makedirs(os.path.dirname(self.output_file), exist_ok=True)
-            
-            with open(self.output_file, "w") as f:
-                json.dump(self.results, f, indent=4, ensure_ascii=False)
-                
-        except Exception as e:
-            self.logger.error(f"Error saving results: {e}")
+        pass
 
     def closed(self, reason):
-        # Final save and summary
-        self.save_results()
         self.logger.info(f"Spider finished. Total results: {len(self.results)}")
-        self.logger.info(f"Results saved to {self.output_file}")
