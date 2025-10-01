@@ -1,0 +1,9 @@
+Seguinte, o 4r scraper atual, ele segue uma lógica que foi aplicada para o stf_scraper, que é: O tipo de raspagem dos dados só roda funcionalmente baseado nas propriedades de como o site do stf funciona. porém foi modificado os nomes das variáveis para 4r_scraper, que é para raspagem de outro site cujo nome é tribunal regional federal da 4 regiao.
+
+Com isso em mente. Use os mesmos conceitos de scraping já feito até então, porém a mudança de raspagem que segue, será aplicada para o contexto novo do 4trf, cujo comportamento para fazer a raspagem é:
+
+Após ele entrar na url inicial (start_urls), o scrapper irá clicar em configurações avançadas, cujo outer html é:
+(<a href="#/" id="btnPesquisaAvancada" class="pop-underline px-4 btnPesquisaAvancadaInicio" data-toggle="collapse" data-target="#divPesquisaAvancada" title="Visualizar outros filtros que podem ser usados para melhorar o resultado da pesquisa" style="font-size: 1.2rem;font-weight: 300;" aria-expanded="true">Pesquisa avançada<i id="iconPesquisaAvancadaMinimizado" class="material-icons justify-content-between iconeComTexto">arrow_drop_up</i></a>), após isso, ele irá selecionar decisões monocráticas, que na página fica na seções tipo documento, cujo outer hmtl é (<div class="filter-option-inner-inner">Decisão monocrática</div>).
+
+após setar essas configurações padrões iniciais para a raspagem, será inserido no campo output de pesquisa, o item 
+
