@@ -1,21 +1,22 @@
 <a href="#/" id="btnPesquisaAvancada" class="pop-underline px-4 btnPesquisaAvancadaInicio" data-toggle="collapse" data-target="#divPesquisaAvancada" title="Visualizar outros filtros que podem ser usados para melhorar o resultado da pesquisa" style="font-size: 1.2rem;font-weight: 300;" aria-expanded="true">Pesquisa avançada<i id="iconPesquisaAvancadaMinimizado" class="material-icons justify-content-between iconeComTexto">arrow_drop_up</i></a>
 
-where
+Apos a ação anterior, definir campo de decisões monocráticas
  
 <div class="filter-option-inner-inner">Decisão monocrática</div>
 
-and then
-
+então inserir dados da query para pesquisa, onde outer html é:
 <input type="search" id="txtPesquisa" name="txtPesquisa" class="form-control campoPesquisa" value="" placeholder="Informe o texto para pesquisa" aria-label="Texto para pesquisa" aria-describedby="btnConsultar" style="padding-right: 2rem">
 
-passar conteudo de algum lugar e depois dar enter 
-
+Após passar o conteudo da querie para propriedade acima, dar enter para pesquisar.
 <button class="btn btn-sm btn-primary d-flex align-items-center ml-2 px-2 btnConsultar" type="submit" title="Consultar" id="btnConsultar_form_inicial" style="height: 37px"><i class="material-icons icon-aligned">search</i><span class="d-none d-lg-block">Pesquisar</span></button>
+
 
 resultado = total documentos encontrados / resultados por paginas + 1
 
 -------------------------------------------------------------------------
-para cada resultado encontrado, clipboard e salva json
+para cada resultado encontrado (documento DM), clipboard e salva json
 
 e passa para o proximo ate o final da pagina... Depois repete o processo ate o final
+
+
 
