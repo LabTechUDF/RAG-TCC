@@ -1,7 +1,35 @@
 {
   "queue": [],
-  "completed_queries": [],
+  "completed_queries": [
+    {
+      "query": {
+        "query": "abandono de função artigo 323",
+        "artigo": "323",
+        "url": "https://jurisprudencia.stf.jus.br/pages/search?base=decisoes&pesquisa_inteiro_teor=false&sinonimo=true&plural=true&radicais=false&buscaExata=true&page=1&pageSize=10&queryString=abandono%20de%20fun%C3%A7%C3%A3o%20artigo%20323&sort=_score&sortBy=desc"
+      },
+      "completed_at": "2025-09-28T20:39:18.154894",
+      "status": "completed"
+    },
+    {
+      "query": {
+        "query": "fraude à execução artigo 179",
+        "artigo": "179",
+        "url": "https://jurisprudencia.stf.jus.br/pages/search?base=decisoes&pesquisa_inteiro_teor=false&sinonimo=true&plural=true&radicais=false&buscaExata=true&page=1&pageSize=25&queryString=fraude%20%C3%A0%20execu%C3%A7%C3%A3o%20artigo%20179&sort=_score&sortBy=desc"
+      },
+      "completed_at": "2025-09-28T20:51:49.950418",
+      "status": "completed"
+    },
+    {
+      "query": {
+        "query": "exercício arbitrário das próprias razões artigo 345",
+        "artigo": "345",
+        "url": "https://jurisprudencia.stf.jus.br/pages/search?base=decisoes&pesquisa_inteiro_teor=false&sinonimo=true&plural=true&radicais=false&buscaExata=true&page=1&pageSize=25&queryString=exerc%C3%ADcio%20arbitr%C3%A1rio%20das%20pr%C3%B3prias%20raz%C3%B5es%20artigo%20345&sort=_score&sortBy=desc"
+      },
+      "completed_at": "2025-09-28T21:09:01.729328",
+      "status": "completed"
+    }
+  ],
   "failed_queries": [],
-  "total_queries": 1,
-  "initialized_at": "2025-09-25T16:00:29.565158"
+  "total_queries": 3,
+  "initialized_at": "2025-09-28T20:33:31.713709"
 }

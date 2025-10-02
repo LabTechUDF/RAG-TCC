@@ -1,3 +1,12 @@
+# ========================================
+# PAGINAÇÃO COMPARTILHADA PARA PARALELISMO
+# ========================================
+
+from pathlib import Path
+# Número de navegadores paralelos (workers)
+PARALLEL_BROWSER_COUNT = 1
+# Diretório para persistência do estado compartilhado
+SHARED_STATE_DIR = str(Path(__file__).parent.parent / '.scrapy_state')
 # Scrapy settings for stf_scraper project
 #
 # For simplicity, this file contains only settings considered important or
@@ -55,10 +64,12 @@ PLAYWRIGHT_DEFAULT_CONTEXT_OPTIONS = {
     "ignore_https_errors": True,  # Ignore HTTPS errors
 }
 
-# Playwright timeouts and optimization for 3 parallel groups
+
+# Playwright timeouts and optimization for parallel browsers
 PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT = 30000  # 30 seconds for safer navigation with slow government sites
-PLAYWRIGHT_MAX_PAGES_PER_CONTEXT = 1  # EXACTLY 1 page per context for isolated groups
-PLAYWRIGHT_MAX_CONTEXTS = 3  # Exactly 3 contexts for 3 parallel groups
+PLAYWRIGHT_MAX_PAGES_PER_CONTEXT = 1  # 1 page per context for isolation
+PARALLEL_BROWSER_COUNT = 3  # Number of parallel browsers for shared pagination
+PLAYWRIGHT_MAX_CONTEXTS = PARALLEL_BROWSER_COUNT
 
 # Browser contexts for different legal sites
 PLAYWRIGHT_CONTEXTS = {
