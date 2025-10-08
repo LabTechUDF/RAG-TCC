@@ -126,7 +126,7 @@ class Trf4JurisprudenciaSpider(scrapy.Spider):
             else:
                 # Regular query format - initial discovery
                 # TODO: Update to TRF 4ª Região URL when available
-                base_url = "https://jurisprudencia.trf4.jus.br/pages/search"
+                base_url = "https://jurisprudencia.trf4.jus.br/eproc2trf4/externo_controlador.php?acao=jurisprudencia@jurisprudencia/pesquisar"
                 initial_url = f"{base_url}?base=acordaos&pesquisa_livre_filtro=ementario&pesquisa_livre={query}&ordenacao=data&tipo_decisao=acordaos"
                 
                 yield scrapy.Request(

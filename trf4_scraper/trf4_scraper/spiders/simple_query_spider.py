@@ -14,11 +14,11 @@ class SimpleQuerySpider(scrapy.Spider):
         super().__init__(*args, **kwargs)
         self.queries = []
         self.results = []
-        self.output_file = "/home/workstation/git/RAG-TCC/4r_scraper/data/simple_query_spider/query_links.json"
+        self.output_file = "/home/workstation/git/RAG-TCC/trf4_scraper/data/simple_query_spider/query_links.json"
 
     def start_requests(self):
         # Load queries from queries.txt
-        with open("/home/workstation/git/RAG-TCC/4r_scraper/configs/queries.txt", "r") as f:
+        with open("/home/workstation/git/RAG-TCC/trf4_scraper/configs/queries.txt", "r") as f:
             self.queries = [line.strip() for line in f.readlines() if line.strip()]
 
         # Create single request to process all queries sequentially

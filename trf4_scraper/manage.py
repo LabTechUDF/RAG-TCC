@@ -4,6 +4,7 @@ TRF 4ª Região Queue-Based Scraper Manager
 """
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -11,7 +12,20 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # Garante que o pacote 4r_scraper pode ser importado ao rodar diretamente
 sys.path.insert(0, str(Path(__file__).parent))
 
-from trf4_scraper.trf4_scraper.trf4_queue_manager import run_fr_queue_based, TRF4QueryQueue
+# Configuração global de logging para registrar tudo no arquivo de log do projeto
+log_dir = Path(__file__).parent / 'logs'
+log_dir.mkdir(exist_ok=True)
+log_file = log_dir / 'scrapy.log'
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    handlers=[
+        logging.FileHandler(log_file, encoding='utf-8'),
+        logging.StreamHandler()
+    ]
+)
+
+from trf4_scraper.trf4_queue_manager import run_fr_queue_based, TRF4QueryQueue
 
 
 class TRF4QueueManager:

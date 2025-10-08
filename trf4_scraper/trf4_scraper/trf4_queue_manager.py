@@ -23,8 +23,8 @@ class TRF4QueryQueue:
     
     def __init__(self, project_root: Path):
         self.project_root = project_root
-        self.queue_file = project_root / "4r_scraper" / "queue_state.json"
-        self.lock_file = project_root / "4r_scraper" / "queue.lock"
+        self.queue_file = project_root / "trf4_scraper" / "queue_state.json"
+        self.lock_file = project_root / "trf4_scraper" / "queue.lock"
         self.current_query: Optional[Dict] = None
         self.thread_local = threading.local()  # Thread-local storage for locks
         
