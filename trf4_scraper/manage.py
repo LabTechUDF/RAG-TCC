@@ -8,7 +8,10 @@ import sys
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from fr_scraper.fr_queue_manager import run_fr_queue_based, TRF4QueryQueue
+# Garante que o pacote 4r_scraper pode ser importado ao rodar diretamente
+sys.path.insert(0, str(Path(__file__).parent))
+
+from trf4_scraper.trf4_scraper.trf4_queue_manager import run_fr_queue_based, TRF4QueryQueue
 
 
 class TRF4QueueManager:

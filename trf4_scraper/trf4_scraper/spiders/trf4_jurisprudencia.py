@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from scrapy.exceptions import CloseSpider
 from scrapy_playwright.page import PageMethod
-from fr_scraper.items import (
+from ..items import (
     JurisprudenciaItem, 
     get_classe_processual_from_url,
     extract_relator_from_content,
@@ -20,7 +20,7 @@ from fr_scraper.items import (
 )
 
 from scrapy.utils.project import get_project_settings
-from fr_scraper.utils.shared_state import (
+from ..utils.shared_state import (
     get_and_increment_page, mark_done, read_state, write_state
 )
 

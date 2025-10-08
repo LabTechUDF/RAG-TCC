@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from scrapy.exceptions import CloseSpider
 from scrapy_playwright.page import PageMethod
-from fr_scraper.items import (
+from ..items import (
     JurisprudenciaItem, 
     get_classe_processual_from_url,
     extract_relator_from_content,
