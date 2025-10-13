@@ -7,6 +7,8 @@ import scrapy
 from itemloaders.processors import TakeFirst, MapCompose
 from w3lib.html import remove_tags, strip_html5_whitespace
 import re
+from datetime import datetime
+
 
 def clean_text(text):
     """Clean text by removing extra whitespace and normalizing"""
@@ -21,122 +23,91 @@ def clean_text(text):
     return text.strip()
 
 
-def get_classe_processual_from_url(url):
-    """Extract classe processual unificada from STJ URL"""
-    if not url:
+def normalize_epoch_date(timestamp):
+    """Convert epoch timestamp (milliseconds) to YYYY-MM-DD format"""
+    if not timestamp:
         return None
     
-    # Map of abbreviations to full names based on STJ patterns
-    classe_map = {
-        'ARESP': 'AGRAVO EM RECURSO ESPECIAL',
-        'RESP': 'RECURSO ESPECIAL', 
-        'RHC': 'RECURSO ORDINÁRIO EM HABEAS CORPUS',
-        'HC': 'HABEAS CORPUS',
-        'MS': 'MANDADO DE SEGURANÇA',
-        'MC': 'MEDIDA CAUTELAR',
-        'AgRg': 'AGRAVO REGIMENTAL'
-    }
-    
-    # Extract from URL parameter livre= or any class reference
-    for sigla, nome_completo in classe_map.items():
-        if sigla.lower() in url.lower():
-            return nome_completo
-    
-    return None
+    try:
+        # Handle both seconds and milliseconds
+        if isinstance(timestamp, str):
+            timestamp = int(timestamp)
+        
+        # If timestamp is in milliseconds, convert to seconds
+        if timestamp > 9999999999:  # If greater than year 2286 in seconds, it's likely milliseconds
+            timestamp = timestamp / 1000
+        
+        dt = datetime.fromtimestamp(timestamp)
+        return dt.strftime('%Y-%m-%d')
+    except (ValueError, OSError) as e:
+        return None
 
 
-def extract_relator_from_content(content):
-    """Extract relator (judge rapporteur) from STJ content"""
-    if not content:
+def extract_case_number_from_title(title):
+    """Extract case number from title (e.g., 'REsp 1890871' -> '1890871')"""
+    if not title:
         return None
     
-    # Pattern to match "Relator(a): Min. NAME" or "RELATORA: MINISTRA NAME"
+    # Pattern to match legal case numbers in titles
     patterns = [
-        r'Relator\(a\):\s*Min\.?\s*([A-ZÁÊÔÇÀÃÕÉ\s]+)',
-        r'RELATOR[A]?:\s*MINISTR[OA]\s*([A-ZÁÊÔÇÀÃÕÉ\s]+)',
-        r'Rel\.?\s*Min\.?\s*([A-ZÁÊÔÇÀÃÕÉ\s]+)'
+        r'(?:REsp|RESP|HC|ARE|RE|RHC|MC|AgRg|EDcl|AgInt)\s+(\d+)',  # Standard patterns
+        r'(\d{7,})',  # Generic long number
+        r'(\d{4}\.\d{6,})',  # Formatted number
     ]
     
     for pattern in patterns:
-        match = re.search(pattern, content, re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
-    
-    return None
-
-
-def extract_publication_date_from_content(content):
-    """Extract publication date from STJ content"""
-    if not content:
-        return None
-    
-    # Pattern to match "DJe DD/MM/YYYY" or "Publicação: DD/MM/YYYY"
-    patterns = [
-        r'DJe\s*(\d{2}/\d{2}/\d{4})',
-        r'Publicação:\s*(\d{2}/\d{2}/\d{4})',
-        r'DJ[eE]?\s*(\d{2}/\d{2}/\d{4})'
-    ]
-    
-    for pattern in patterns:
-        match = re.search(pattern, content, re.IGNORECASE)
+        match = re.search(pattern, title, re.IGNORECASE)
         if match:
             return match.group(1)
     
     return None
 
 
-def extract_decision_date_from_content(content):
-    """Extract decision date from STJ content"""
+def infer_article_from_content(content):
+    """Infer article reference from content using robust regex"""
     if not content:
-        return None
+        return None, None, None
     
-    # Pattern to match "Julgamento: DD/MM/YYYY" or similar
-    patterns = [
-        r'Julgamento:\s*(\d{2}/\d{2}/\d{4})',
-        r'Data do Julgamento:\s*(\d{2}/\d{2}/\d{4})',
-        r'Julgado em:\s*(\d{2}/\d{2}/\d{4})'
+    # Common article patterns in legal documents
+    article_patterns = [
+        # CP (Código Penal) patterns
+        (r'\b(?:art\.?\s*|artigo\s*)(\d+)(?:-?[A-Z])?(?:\s*do\s*)?(?:CP|Código\s*Penal)', 'CP', 'Código Penal'),
+        (r'\bCP\s*art\.?\s*(\d+)(?:-?[A-Z])?', 'CP', 'Código Penal'),
+        
+        # CPP (Código de Processo Penal) patterns  
+        (r'\b(?:art\.?\s*|artigo\s*)(\d+)(?:-?[A-Z])?(?:\s*do\s*)?(?:CPP|Código\s*de\s*Processo\s*Penal)', 'CPP', 'Código de Processo Penal'),
+        (r'\bCPP\s*art\.?\s*(\d+)(?:-?[A-Z])?', 'CPP', 'Código de Processo Penal'),
+        
+        # Generic article patterns
+        (r'\b(?:art\.?\s*|artigo\s*)(\d+)(?:-?[A-Z])?', 'Generic', 'Artigo'),
     ]
     
-    for pattern in patterns:
-        match = re.search(pattern, content, re.IGNORECASE)
-        if match:
-            return match.group(1)
-    
-    return None
-
-
-def extract_partes_from_content(content):
-    """Extract parties (partes) information from STJ content"""
-    if not content:
-        return None
-    
-    # Pattern to match various party types in STJ decisions
-    patterns = [
-        r'RECORRENTE:\s*([^\n]+)',
-        r'RECORRIDO:\s*([^\n]+)',
-        r'IMPETRANTE:\s*([^\n]+)',
-        r'IMPETRADO:\s*([^\n]+)',
-        r'AGRAVANTE:\s*([^\n]+)',
-        r'AGRAVADO:\s*([^\n]+)',
-        r'REQUERENTE:\s*([^\n]+)',
-        r'REQUERIDO:\s*([^\n]+)',
-        r'PACIENTE:\s*([^\n]+)',
-        r'COATOR:\s*([^\n]+)'
-    ]
-    
-    partes = []
-    for pattern in patterns:
+    for pattern, code, description in article_patterns:
         matches = re.findall(pattern, content, re.IGNORECASE)
-        for match in matches:
-            partes.append(match.strip())
+        if matches:
+            # Take the first/most common article found
+            article = matches[0]
+            cluster_name = f"art_{article}"
+            
+            if code == 'CP':
+                cluster_desc = f"Código Penal art. {article}"
+                article_ref = f"CP art. {article}"
+            elif code == 'CPP':
+                cluster_desc = f"Código de Processo Penal art. {article}"  
+                article_ref = f"CPP art. {article}"
+            else:
+                cluster_desc = f"Artigo {article}"
+                article_ref = f"art. {article}"
+            
+            return cluster_name, cluster_desc, article_ref
     
-    return '; '.join(partes) if partes else None
+    return None, None, None
 
 
-class LegalDocumentItem(scrapy.Item):
-    """Base item for Brazilian legal documents"""
+class STJDecisionItem(scrapy.Item):
+    """Item for STJ monocratic decisions"""
     
-    # Core identification
+    # Core RAG fields
     cluster_name = scrapy.Field(
         output_processor=TakeFirst()
     )
@@ -162,18 +133,11 @@ class LegalDocumentItem(scrapy.Item):
         output_processor=TakeFirst()
     )
     
-    # Brazilian legal process classification
-    classe_processual_unificada = scrapy.Field(
-        output_processor=TakeFirst()
-    )
-    
-    # Content
     content = scrapy.Field(
         input_processor=MapCompose(clean_text),
         output_processor=TakeFirst()
     )
     
-    # Essential metadata
     url = scrapy.Field(
         output_processor=TakeFirst()
     )
@@ -187,22 +151,12 @@ class LegalDocumentItem(scrapy.Item):
         input_processor=MapCompose(clean_text),
         output_processor=TakeFirst()
     )
-
-
-class JurisprudenciaItem(LegalDocumentItem):
-    """Item for jurisprudence (court decisions) from STJ"""
     
-    # Court decision specifics - will be extracted from content in spider
     relator = scrapy.Field(
-        output_processor=TakeFirst()
-    )
-    
-    decision_type = scrapy.Field(
         input_processor=MapCompose(clean_text),
         output_processor=TakeFirst()
     )
     
-    # Dates specific to decisions - will be extracted from content in spider
     publication_date = scrapy.Field(
         output_processor=TakeFirst()
     )
@@ -211,7 +165,6 @@ class JurisprudenciaItem(LegalDocumentItem):
         output_processor=TakeFirst()
     )
     
-    # New fields for detailed decision content
     partes = scrapy.Field(
         input_processor=MapCompose(clean_text),
         output_processor=TakeFirst()
@@ -227,43 +180,32 @@ class JurisprudenciaItem(LegalDocumentItem):
         output_processor=TakeFirst()
     )
     
-    # STJ-specific fields for full decision text extraction
-    numero_unico = scrapy.Field(
-        output_processor=TakeFirst()
-    )
-    
-    # Raw text from textarea #textSemformatacao1
-    raw_text = scrapy.Field(
-        output_processor=TakeFirst()
-    )
-    
-    # Original textarea container (audit field)
-    raw_container_html = scrapy.Field(
-        output_processor=TakeFirst()
-    )
-    
-    # Quality assessment score (calculated by pipeline)
     content_quality = scrapy.Field(
         output_processor=TakeFirst()
     )
     
-    # Processing metadata
-    captured_at_utc = scrapy.Field(
+    # Trace fields for full provenance
+    trace = scrapy.Field(
         output_processor=TakeFirst()
     )
     
-    success = scrapy.Field(
+    # Raw JSON fields from STJ dataset (for debugging/validation)
+    raw_seq_documento = scrapy.Field(
         output_processor=TakeFirst()
     )
     
-    errors = scrapy.Field(
+    raw_tipo_documento = scrapy.Field(
         output_processor=TakeFirst()
     )
     
-    input_url = scrapy.Field(
+    raw_tipo_decisao = scrapy.Field(
         output_processor=TakeFirst()
     )
     
-    decision_url = scrapy.Field(
+    raw_data_publicacao = scrapy.Field(
+        output_processor=TakeFirst()
+    )
+    
+    raw_data_decisao = scrapy.Field(
         output_processor=TakeFirst()
     )

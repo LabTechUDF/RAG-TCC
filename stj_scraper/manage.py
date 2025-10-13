@@ -1,153 +1,142 @@
 #!/usr/bin/env python3
 """
-STJ Queue-Based Scraper Manager
+STJ Dataset Scraper Manager
 """
 
 import argparse
 import sys
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import logging
+import os
 
-from stj_queue_manager import run_stj_queue_based, STJQueryQueue
+# Add the current directory to the Python path
+sys.path.insert(0, str(Path(__file__).parent))
+
+from stj_scraper.stj_queue_manager import STJDatasetScraper
 
 
-class STJQueueManager:
+class STJScraperManager:
     def __init__(self):
         self.project_root = Path(__file__).parent
-    
-    def run_stj_sequential_queue(self, show_browser=False):
-        print("🎯 Running STJ Jurisprudencia with Sequential Queue Architecture")
-        query_file = self.project_root / 'data' / 'simple_query_spider' / 'query_links.json'
+        self.setup_logging()
         
-        if not query_file.exists():
-            print(f"❌ Query file not found: {query_file}")
-            return False
+    def setup_logging(self):
+        """Setup logging configuration"""
+        log_dir = self.project_root / 'logs'
+        log_dir.mkdir(exist_ok=True)
+        log_file = log_dir / 'app.log'
+        
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s %(levelname)s %(name)s - %(message)s',
+            handlers=[
+                logging.FileHandler(log_file),
+                logging.StreamHandler()
+            ]
+        )
+        self.logger = logging.getLogger(__name__)
+    
+    def run_stj_crawl(self, dataset_url=None, limit=None, article_filter=None, 
+                      cluster_order='article', out_dir='data', output_jsonl=None,
+                      resume=False, write_txt=False):
+        """Execute STJ dataset crawling"""
+        
+        # Default values
+        if dataset_url is None:
+            dataset_url = "https://dadosabertos.web.stj.jus.br/dataset/integras-de-decisoes-terminativas-e-acordaos-do-diario-da-justica"
+        
+        if output_jsonl is None:
+            output_jsonl = str(self.project_root / out_dir / 'stj_decisoes_monocraticas.jsonl')
+        
+        self.logger.info("🎯 Starting STJ Dataset Scraping")
+        self.logger.info(f"   Dataset URL: {dataset_url}")
+        self.logger.info(f"   Output JSONL: {output_jsonl}")
+        self.logger.info(f"   Limit: {limit if limit else 'All'}")
+        self.logger.info(f"   Article Filter: {article_filter if article_filter else 'All'}")
+        self.logger.info(f"   Cluster Order: {cluster_order}")
+        self.logger.info(f"   Resume: {resume}")
+        self.logger.info(f"   Write TXT files: {write_txt}")
         
         try:
-            report = run_stj_queue_based(self.project_root, query_file, show_browser)
+            scraper = STJDatasetScraper(
+                project_root=self.project_root,
+                dataset_url=dataset_url,
+                output_jsonl=output_jsonl,
+                article_filter=article_filter,
+                cluster_order=cluster_order,
+                limit=limit,
+                write_txt=write_txt
+            )
+            
+            report = scraper.run_scraping(resume=resume)
             
             if 'error' in report:
-                print(f"❌ STJ Queue processing failed: {report['error']}")
+                self.logger.error(f"❌ Scraping failed: {report['error']}")
                 return False
             
-            success_rate = (report['successful'] / report['total_queries']) * 100
+            # Log final report
+            self.logger.info("📊 Final Results:")
+            self.logger.info(f"   Zips processed: {report.get('zips_processed', 0)}")
+            self.logger.info(f"   Decisions found: {report.get('decisions_found', 0)}")
+            self.logger.info(f"   Monocratic decisions: {report.get('monocratic_decisions', 0)}")
+            self.logger.info(f"   TXT files found: {report.get('txt_files_found', 0)}")
+            self.logger.info(f"   JSONL lines written: {report.get('jsonl_lines_written', 0)}")
+            
+            success_rate = (report.get('jsonl_lines_written', 0) / max(report.get('monocratic_decisions', 1), 1)) * 100
+            self.logger.info(f"   Success rate: {success_rate:.1f}%")
+            
             return success_rate >= 50
             
         except Exception as e:
-            print(f"❌ Error in STJ queue-based processing: {e}")
+            self.logger.error(f"❌ Error in STJ scraping: {e}")
             return False
-    
-    def run_stj_concurrent_queue(self, max_workers=3, show_browser=False):
-        print(f"🎯 Running STJ Jurisprudencia with Concurrent Queue Architecture ({max_workers} workers)")
-        query_file = self.project_root / 'data' / 'simple_query_spider' / 'query_links.json'
-        
-        if not query_file.exists():
-            print(f"❌ Query file not found: {query_file}")
-            return False
-        
-        try:
-            queue_manager = STJQueryQueue(self.project_root)
-            
-            if not queue_manager.load_queries(query_file):
-                print("❌ Failed to load STJ queries")
-                return False
-            
-            completed_workers = 0
-            total_processed = 0
-            
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = []
-                for worker_id in range(max_workers):
-                    future = executor.submit(self._concurrent_worker, queue_manager, worker_id, show_browser)
-                    futures.append(future)
-                
-                for future in as_completed(futures):
-                    try:
-                        worker_results = future.result()
-                        if worker_results:
-                            completed_workers += 1
-                            total_processed += worker_results.get('processed_count', 0)
-                            print(f"✅ STJ Worker completed: {worker_results}")
-                    except Exception as e:
-                        print(f"❌ STJ Worker failed: {e}")
-            
-            final_status = queue_manager.get_queue_status()
-            print(f"\n📊 Final STJ Results:")
-            print(f"   Workers completed: {completed_workers}/{max_workers}")
-            print(f"   Total processed: {total_processed}")
-            print(f"   Successful: {final_status['completed_queries']}")
-            print(f"   Failed: {final_status['failed_queries']}")
-            
-            success_rate = (final_status['completed_queries'] / max(final_status['total_queries'], 1)) * 100
-            return success_rate >= 50
-            
-        except Exception as e:
-            print(f"❌ Error in STJ concurrent queue processing: {e}")
-            return False
-    
-    def _concurrent_worker(self, queue_manager, worker_id, show_browser):
-        processed_count = 0
-        worker_logger = f"STJ-Worker-{worker_id}"
-        
-        print(f"🔄 {worker_logger}: Starting")
-        
-        while True:
-            try:
-                result = queue_manager.process_single_query(show_browser)
-                if result is None:
-                    break
-                
-                processed_count += 1
-                article = result['query']['artigo']
-                
-                if result['success']:
-                    print(f"✅ {worker_logger}: Completed STJ Article {article}")
-                else:
-                    print(f"❌ {worker_logger}: Failed STJ Article {article}")
-                    
-            except Exception as e:
-                print(f"💥 {worker_logger}: Error processing STJ query: {e}")
-                break
-        
-        print(f"🏁 {worker_logger}: Finished (processed {processed_count} STJ queries)")
-        return {'worker_id': worker_id, 'processed_count': processed_count}
     
     def show_queue_status(self):
-        queue_manager = STJQueryQueue(self.project_root)
-        status = queue_manager.get_queue_status()
+        """Show current queue status"""
+        scraper = STJDatasetScraper(self.project_root)
+        status = scraper.get_queue_status()
         
         print("📊 STJ Queue Status:")
-        print(f"   Remaining: {status.get('remaining_queries', 0)}")
-        print(f"   Completed: {status.get('completed_queries', 0)}")
-        print(f"   Failed: {status.get('failed_queries', 0)}")
+        print(f"   Resources remaining: {status.get('remaining_resources', 0)}")
+        print(f"   Resources completed: {status.get('completed_resources', 0)}")
+        print(f"   Resources failed: {status.get('failed_resources', 0)}")
         print(f"   Progress: {status.get('progress_percentage', 0):.1f}%")
         
-        if status.get('next_articles'):
-            print(f"   Next STJ articles: {', '.join(status['next_articles'])}")
+        if status.get('next_resources'):
+            print(f"   Next resources: {', '.join(status['next_resources'][:5])}")
         
-        if status.get('total_queries', 0) == 0:
-            print("   ℹ️  No active STJ queue found")
+        if status.get('total_resources', 0) == 0:
+            print("   ℹ️  No active queue found")
     
     def cleanup_queue_files(self):
-        queue_manager = STJQueryQueue(self.project_root)
-        queue_manager.cleanup_queue_files()
-        print("✅ STJ Queue files cleaned up")
+        """Clean up queue state files"""
+        scraper = STJDatasetScraper(self.project_root)
+        scraper.cleanup_queue_files()
+        print("✅ Queue files cleaned up")
 
 
 def main():
-    parser = argparse.ArgumentParser(description='STJ Queue-Based Scraper Manager')
+    parser = argparse.ArgumentParser(description='STJ Dataset Scraper Manager')
     
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
     
-    sequential_parser = subparsers.add_parser('sequential', help='Run with sequential STJ queue processing')
-    sequential_parser.add_argument('--show-browser', action='store_true', help='Show browser window')
+    # STJ crawl command
+    stj_parser = subparsers.add_parser('stj', help='STJ dataset operations')
+    stj_subparsers = stj_parser.add_subparsers(dest='stj_command', help='STJ commands')
     
-    concurrent_parser = subparsers.add_parser('concurrent', help='Run with concurrent STJ queue processing')
-    concurrent_parser.add_argument('--workers', type=int, default=3, help='Number of concurrent workers (default: 3)')
-    concurrent_parser.add_argument('--show-browser', action='store_true', help='Show browser window')
+    crawl_parser = stj_subparsers.add_parser('crawl', help='Crawl STJ dataset')
+    crawl_parser.add_argument('--dataset-url', help='Dataset URL')
+    crawl_parser.add_argument('--limit', type=int, help='Limit number of resources to process')
+    crawl_parser.add_argument('--article-filter', help='Filter by article numbers (comma separated)')
+    crawl_parser.add_argument('--cluster-order', choices=['article', 'random'], default='article', help='Clustering order')
+    crawl_parser.add_argument('--out', default='data', help='Output directory')
+    crawl_parser.add_argument('--output-jsonl', help='Output JSONL file path')
+    crawl_parser.add_argument('--resume', action='store_true', help='Resume from previous state')
+    crawl_parser.add_argument('--write-txt', type=str, default='false', choices=['true', 'false'], help='Write TXT files to disk')
     
-    subparsers.add_parser('status', help='Show current STJ queue status')
-    subparsers.add_parser('cleanup', help='Clean up STJ queue state files')
+    # Status and cleanup commands
+    subparsers.add_parser('status', help='Show current queue status')
+    subparsers.add_parser('cleanup', help='Clean up queue state files')
     
     args = parser.parse_args()
     
@@ -155,17 +144,20 @@ def main():
         parser.print_help()
         return
     
-    manager = STJQueueManager()
+    manager = STJScraperManager()
     
     try:
-        if args.command == 'sequential':
-            success = manager.run_stj_sequential_queue(show_browser=args.show_browser)
-            sys.exit(0 if success else 1)
-        
-        elif args.command == 'concurrent':
-            success = manager.run_stj_concurrent_queue(
-                max_workers=args.workers,
-                show_browser=args.show_browser
+        if args.command == 'stj' and args.stj_command == 'crawl':
+            write_txt = args.write_txt.lower() == 'true'
+            success = manager.run_stj_crawl(
+                dataset_url=args.dataset_url,
+                limit=args.limit,
+                article_filter=args.article_filter,
+                cluster_order=args.cluster_order,
+                out_dir=args.out,
+                output_jsonl=args.output_jsonl,
+                resume=args.resume,
+                write_txt=write_txt
             )
             sys.exit(0 if success else 1)
         
@@ -176,10 +168,10 @@ def main():
             manager.cleanup_queue_files()
     
     except KeyboardInterrupt:
-        print("\n⏹️  STJ operation interrupted by user.")
+        print("\n⏹️  Operation interrupted by user.")
         sys.exit(1)
     except Exception as e:
-        print(f"❌ STJ Unexpected error: {e}")
+        print(f"❌ Unexpected error: {e}")
         sys.exit(1)
 
 

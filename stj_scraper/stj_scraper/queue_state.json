@@ -1,98 +1,23 @@
 {
-  "queue": [],
-  "completed_queries": [
+  "resources": [
     {
-      "query": {
-        "query": "peculato culposo artigo 312",
-        "artigo": "312",
-        "url": "https://scon.stj.jus.br/SCON/pesquisar.jsp?b=DTXT&numDocsPagina=50&i=1&O=&ref=&processo=&ementa=&nota=&filtroPorNota=&orgao=&relator=&uf=&classe=&data=&dtpb=&dtde=&tp=T&operador=e&livre=peculato+culposo+artigo+312"
-      },
-      "completed_at": "2025-10-05T20:33:44.331942",
-      "status": "completed"
-    },
-    {
-      "query": {
-        "query": "abandono de função artigo 323",
-        "artigo": "323",
-        "url": "https://scon.stj.jus.br/SCON/pesquisar.jsp?b=DTXT&numDocsPagina=50&i=1&O=&ref=&processo=&ementa=&nota=&filtroPorNota=&orgao=&relator=&uf=&classe=&data=&dtpb=&dtde=&tp=T&operador=e&livre=abandono+de+fun%C3%A7%C3%A3o+artigo+323"
-      },
-      "completed_at": "2025-10-05T20:33:57.168033",
-      "status": "completed"
-    },
-    {
-      "query": {
-        "query": "exercício arbitrário das próprias razões artigo 345",
-        "artigo": "345",
-        "url": "https://scon.stj.jus.br/SCON/pesquisar.jsp?b=DTXT&numDocsPagina=50&i=1&O=&ref=&processo=&ementa=&nota=&filtroPorNota=&orgao=&relator=&uf=&classe=&data=&dtpb=&dtde=&tp=T&operador=e&livre=exerc%C3%ADcio+arbitr%C3%A1rio+das+pr%C3%B3prias+raz%C3%B5es+artigo+345"
-      },
-      "completed_at": "2025-10-05T20:34:11.399820",
-      "status": "completed"
-    },
-    {
-      "query": {
-        "query": "fraude à execução artigo 179",
-        "artigo": "179",
-        "url": "https://scon.stj.jus.br/SCON/pesquisar.jsp?b=DTXT&numDocsPagina=50&i=1&O=&ref=&processo=&ementa=&nota=&filtroPorNota=&orgao=&relator=&uf=&classe=&data=&dtpb=&dtde=&tp=T&operador=e&livre=fraude+%C3%A0+execu%C3%A7%C3%A3o+artigo+179"
-      },
-      "completed_at": "2025-10-05T20:34:24.959630",
-      "status": "completed"
-    },
-    {
-      "query": {
-        "query": "desobediência artigo 330",
-        "artigo": "330",
-        "url": "https://scon.stj.jus.br/SCON/pesquisar.jsp?b=DTXT&numDocsPagina=50&i=1&O=&ref=&processo=&ementa=&nota=&filtroPorNota=&orgao=&relator=&uf=&classe=&data=&dtpb=&dtde=&tp=T&operador=e&livre=desobedi%C3%AAncia+artigo+330"
-      },
-      "completed_at": "2025-10-05T20:34:38.260472",
-      "status": "completed"
-    },
-    {
-      "query": {
-        "query": "violação de sigilo funcional artigo 325",
-        "artigo": "325",
-        "url": "https://scon.stj.jus.br/SCON/pesquisar.jsp?b=DTXT&numDocsPagina=50&i=1&O=&ref=&processo=&ementa=&nota=&filtroPorNota=&orgao=&relator=&uf=&classe=&data=&dtpb=&dtde=&tp=T&operador=e&livre=viola%C3%A7%C3%A3o+de+sigilo+funcional+artigo+325"
-      },
-      "completed_at": "2025-10-05T20:34:51.371764",
-      "status": "completed"
-    },
-    {
-      "query": {
-        "query": "subtração de coisa própria artigo 346",
-        "artigo": "346",
-        "url": "https://scon.stj.jus.br/SCON/pesquisar.jsp?b=DTXT&numDocsPagina=50&i=1&O=&ref=&processo=&ementa=&nota=&filtroPorNota=&orgao=&relator=&uf=&classe=&data=&dtpb=&dtde=&tp=T&operador=e&livre=subtra%C3%A7%C3%A3o+de+coisa+pr%C3%B3pria+artigo+346"
-      },
-      "completed_at": "2025-10-05T20:35:05.034251",
-      "status": "completed"
-    },
-    {
-      "query": {
-        "query": "omissão de notificação de crime artigo 319-A",
-        "artigo": "319-A",
-        "url": "https://scon.stj.jus.br/SCON/pesquisar.jsp?b=DTXT&numDocsPagina=50&i=1&O=&ref=&processo=&ementa=&nota=&filtroPorNota=&orgao=&relator=&uf=&classe=&data=&dtpb=&dtde=&tp=T&operador=e&livre=omiss%C3%A3o+de+notifica%C3%A7%C3%A3o+de+crime+artigo+319-A"
-      },
-      "completed_at": "2025-10-05T20:35:17.899788",
-      "status": "completed"
-    },
-    {
-      "query": {
-        "query": "exercício ilegal da profissão artigo 205",
-        "artigo": "205",
-        "url": "https://scon.stj.jus.br/SCON/pesquisar.jsp?b=DTXT&numDocsPagina=50&i=1&O=&ref=&processo=&ementa=&nota=&filtroPorNota=&orgao=&relator=&uf=&classe=&data=&dtpb=&dtde=&tp=T&operador=e&livre=exerc%C3%ADcio+ilegal+da+profiss%C3%A3o+artigo+205"
-      },
-      "completed_at": "2025-10-05T20:35:31.085030",
-      "status": "completed"
-    },
-    {
-      "query": {
-        "query": "abandono material artigo 244",
-        "artigo": "244",
-        "url": "https://scon.stj.jus.br/SCON/pesquisar.jsp?b=DTXT&numDocsPagina=50&i=1&O=&ref=&processo=&ementa=&nota=&filtroPorNota=&orgao=&relator=&uf=&classe=&data=&dtpb=&dtde=&tp=T&operador=e&livre=abandono+material+artigo+244"
-      },
-      "completed_at": "2025-10-05T20:35:44.134445",
-      "status": "completed"
+      "resource_id": "2b640cb2-cd3f-4737-999b-efece1196fbe",
+      "filename": "202202.zip",
+      "resource_page_url": "https://dadosabertos.web.stj.jus.br/dataset/integras-de-decisoes-terminativas-e-acordaos-do-diario-da-justica/resource/2b640cb2-cd3f-4737-999b-efece1196fbe",
+      "dataset_url": "https://dadosabertos.web.stj.jus.br/dataset/integras-de-decisoes-terminativas-e-acordaos-do-diario-da-justica",
+      "is_zip": true
     }
   ],
-  "failed_queries": [],
-  "total_queries": 10,
-  "initialized_at": "2025-10-05T20:33:26.454311"
+  "processed": [],
+  "failed": [],
+  "current_index": 0,
+  "total_resources": 1,
+  "start_time": 1760316401.0439153,
+  "stats": {
+    "zips_processed": 0,
+    "decisions_found": 0,
+    "monocratic_decisions": 0,
+    "txt_files_found": 0,
+    "jsonl_lines_written": 0
+  }
 }
