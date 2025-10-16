@@ -273,7 +273,7 @@ class STJDatasetScraper:
                 self._write_txt_file(decision_item, txt_content)
             
             # Append to JSONL
-            append_jsonl(decision_item, self.output_jsonl)
+            append_jsonl(self.output_jsonl, decision_item)
             stats['jsonl_lines_written'] += 1
             
             self.logger.debug(f"Processed decision: {decision_item.get('title', 'No title')}")
@@ -285,7 +285,7 @@ class STJDatasetScraper:
         """Create normalized decision item"""
         
         # Extract information from TXT content
-        cluster_name, cluster_desc, article_ref = self.text_processor.extract_article_info(txt_content)
+        cluster_name, cluster_desc, article_ref, code_family = self.text_processor.extract_article_info(txt_content)
         
         # Extract case information
         title = json_record.get('titulo') or json_record.get('title') or f"Decisão {json_record.get('seqDocumento', 'Sem número')}"
@@ -317,6 +317,7 @@ class STJDatasetScraper:
             'cluster_name': cluster_name or 'unknown',
             'cluster_description': cluster_desc or 'Decisão sem artigo identificado',
             'article_reference': article_ref or 'N/A',
+            'code_family': code_family or 'UNK',
             'source': f"STJ - {resource['filename']}",
             'title': title,
             'case_number': case_number,

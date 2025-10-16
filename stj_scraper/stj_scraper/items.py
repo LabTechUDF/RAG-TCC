@@ -120,6 +120,10 @@ class STJDecisionItem(scrapy.Item):
         output_processor=TakeFirst()
     )
     
+    code_family = scrapy.Field(
+        output_processor=TakeFirst()
+    )
+    
     source = scrapy.Field(
         output_processor=TakeFirst()
     )

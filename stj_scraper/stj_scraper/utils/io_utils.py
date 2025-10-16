@@ -29,13 +29,20 @@ def load_json(file_path):
         return None
 
 
-def append_jsonl(item, file_path):
-    """Append item to JSONL file"""
-    ensure_directory(Path(file_path).parent)
-    
-    with open(file_path, 'a', encoding='utf-8') as f:
-        json.dump(item, f, ensure_ascii=False)
-        f.write('\n')
+def ensure_jsonl(path: str):
+    """Ensure JSONL file exists and create directory if needed"""
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    if not p.exists():
+        p.touch()
+
+
+def append_jsonl(path: str, obj: dict):
+    """Append object to JSONL file with proper UTF-8 encoding and flush"""
+    ensure_jsonl(path)
+    with open(path, "a", encoding="utf-8", newline="\n") as f:
+        f.write(json.dumps(obj, ensure_ascii=False) + "\n")
+        f.flush()  # Ensure data is written immediately
 
 
 def read_jsonl(file_path):

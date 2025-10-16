@@ -5,6 +5,50 @@ import re
 from typing import Optional, Tuple, Dict, List
 
 
+# Code family detection patterns
+CODE_LEX = {
+    "CP":  [r"\b(código\s+penal)\b", r"\bCP\b"],
+    "CPC": [r"\b(código\s+de\s+processo\s+civil)\b", r"\bCPC\b", r"\bNCPC\b"],
+    "CC":  [r"\b(código\s+civil)\b", r"\bCC\b"],
+}
+
+# Ex.: veto forte: art. 505 não existe no CP; altamente plausível no CPC
+VETO_BY_ARTICLE = {
+    "CP":  {505},   # artigos que NÃO devem ser CP
+}
+DEFAULT_HINT = {
+    505: "CPC",     # se nada indicar, favoreça CPC
+}
+
+
+def guess_code_family(article_num: int, context: str) -> str:
+    """Guess code family (CP/CPC/CC/UNK) based on article number and context"""
+    ctx = context.lower()
+
+    # Regras fortes por léxico
+    for code, pats in CODE_LEX.items():
+        if any(re.search(p, ctx, re.IGNORECASE) for p in pats):
+            if article_num in VETO_BY_ARTICLE.get(code, set()):
+                continue
+            return code
+
+    # Veto + default por artigo
+    if article_num in VETO_BY_ARTICLE.get("CP", set()):
+        return DEFAULT_HINT.get(article_num, "CPC")
+
+    # Sinais fracos
+    penal = any(w in ctx for w in ["pena", "crime", "tipo penal", "dolo", "culpa"])
+    proc  = any(w in ctx for w in ["sentença", "recurso", "procedimento", "nulidade", "tutela"])
+    civil = any(w in ctx for w in ["obrigação", "contrato", "responsabilidade civil", "indenização"])
+
+    if proc:  return "CPC"
+    if penal: return "CP"
+    if civil: return "CC"
+
+    # Fallback
+    return DEFAULT_HINT.get(article_num, "UNK")
+
+
 class LegalTextProcessor:
     """Process and extract information from legal texts"""
     
@@ -26,32 +70,49 @@ class LegalTextProcessor:
             (re.compile(r'\b(?:art\.?\s*|artigo\s*)(\d+)(?:-?[A-Z])?', re.IGNORECASE), 'Generic', 'Artigo'),
         ]
     
-    def extract_article_info(self, content: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-        """Extract article information from legal text"""
+    def extract_article_info(self, content: str) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
+        """Extract article information from legal text with enhanced code family detection"""
         if not content:
-            return None, None, None
+            return None, None, None, None
         
         # Try each pattern in order of specificity
-        for pattern, code, description in self.article_patterns:
+        for pattern, original_code, description in self.article_patterns:
             matches = pattern.findall(content)
             if matches:
                 # Take the first/most prominent article found
                 article = matches[0]
+                
+                try:
+                    article_num = int(article.replace('-A', '').replace('-B', '').replace('-C', ''))
+                except ValueError:
+                    article_num = 0
+                
+                # Use enhanced code family detection
+                code_family = guess_code_family(article_num, content)
+                
+                # Build cluster name - always use format "art_XXX" regardless of code family
                 cluster_name = f"art_{article}"
                 
-                if code == 'CP':
-                    cluster_desc = f"Código Penal art. {article}"
+                # Build description and reference based on code family
+                if code_family == "UNK":
+                    cluster_desc = f"Art. {article} (código não identificado)"
+                    article_ref = f"art. {article}"
+                elif code_family == "CP":
+                    cluster_desc = f"Código Penal, art. {article}"
                     article_ref = f"CP art. {article}"
-                elif code == 'CPP':
-                    cluster_desc = f"Código de Processo Penal art. {article}"
-                    article_ref = f"CPP art. {article}"
+                elif code_family == "CPC":
+                    cluster_desc = f"Código de Processo Civil, art. {article}"
+                    article_ref = f"CPC art. {article}"
+                elif code_family == "CC":
+                    cluster_desc = f"Código Civil, art. {article}"
+                    article_ref = f"CC art. {article}"
                 else:
-                    cluster_desc = f"Artigo {article}"
+                    cluster_desc = f"Art. {article} (código não identificado)"
                     article_ref = f"art. {article}"
                 
-                return cluster_name, cluster_desc, article_ref
+                return cluster_name, cluster_desc, article_ref, code_family
         
-        return None, None, None
+        return None, None, None, None
     
     def extract_case_number(self, title: str) -> Optional[str]:
         """Extract case number from decision title"""
