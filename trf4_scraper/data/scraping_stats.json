@@ -1,19 +1,15 @@
 {
-  "total_items": 203,
-  "items_by_theme": {
-    "art_345": 203
-  },
+  "total_items": 0,
+  "items_by_theme": {},
   "items_by_quality": {
-    "high": 203,
+    "high": 0,
     "medium": 0,
     "low": 0
   },
-  "items_by_classe": {
-    "null": 203
-  },
-  "items_with_relator": 203,
-  "items_with_content": 203,
-  "start_time": "2025-09-28T20:53:42.618884",
-  "end_time": "2025-09-28T21:09:01.137861",
-  "duration": 918.518977
+  "items_by_classe": {},
+  "items_with_relator": 0,
+  "items_with_content": 0,
+  "start_time": "2025-10-22T23:31:33.951517",
+  "end_time": "2025-10-22T23:31:34.477379",
+  "duration": 0.525862
 }

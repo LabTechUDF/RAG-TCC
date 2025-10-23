@@ -1,16 +1,14 @@
 {
   "queue": [],
-  "completed_queries": [],
-  "failed_queries": [
+  "completed_queries": [
     {
       "query": {
         "query": "abandono de função artigo 323",
         "artigo": "323",
         "url": "https://jurisprudencia.stf.jus.br/pages/search?base=decisoes&pesquisa_inteiro_teor=false&sinonimo=true&plural=true&radicais=false&buscaExata=true&page=1&pageSize=10&queryString=abandono%20de%20fun%C3%A7%C3%A3o%20artigo%20323&sort=_score&sortBy=desc"
       },
-      "failed_at": "2025-10-08T16:39:49.343133",
-      "error": "Traceback (most recent call last):\n  File \"/home/wilian-blake/Documents/git/RAG-TCC/.venv/bin/scrapy\", line 8, in <module>\n    sys.exit(execute())\n             ~~~~~~~^^\n  File \"/home/wilian-blake/Documents/git/RAG-TCC/.venv/lib/python3.13/site-packages/scrapy/cmdline.py\", line 172, in execute\n    settings = get_project_settings()\n  File \"/home/wilian-blake/Documents/git/RAG-TCC/.venv/lib/python3.13/site-packages/scrapy/utils/project.py\", line 73, in get_project_settings\n    settings.setmodule(settings_module_path, priority=\"project\")\n    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/wilian-blake/Documents/git/RAG-TCC/.venv/lib/python3.13/site-packages/scrapy/settings/__init__.py\", line 481, in setmodule\n    module = import_module(module)\n  File \"/usr/lib/python3.13/importlib/__init__.py\", line 88, in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<frozen importlib._bootstrap>\", line 1387, in _gcd_import\n  File \"<frozen importlib._bootstrap>\", line 1360, in _find_and_load\n  File \"<frozen importlib._bootstrap>\", line 1310, in _find_and_load_unlocked\n  File \"<frozen importlib._bootstrap>\", line 488, in _call_with_frames_removed\n  File \"<frozen importlib._bootstrap>\", line 1387, in _gcd_import\n  File \"<frozen importlib._bootstrap>\", line 1360, in _find_and_load\n  File \"<frozen importlib._bootstrap>\", line 1324, in _find_and_load_unlocked\nModuleNotFoundError: No module named '4r_scraper'\n",
-      "status": "failed"
+      "completed_at": "2025-10-22T23:31:32.477129",
+      "status": "completed"
     },
     {
       "query": {
@@ -18,9 +16,8 @@
         "artigo": "345",
         "url": "https://jurisprudencia.stf.jus.br/pages/search?base=decisoes&pesquisa_inteiro_teor=false&sinonimo=true&plural=true&radicais=false&buscaExata=true&page=1&pageSize=25&queryString=exerc%C3%ADcio%20arbitr%C3%A1rio%20das%20pr%C3%B3prias%20raz%C3%B5es%20artigo%20345&sort=_score&sortBy=desc"
       },
-      "failed_at": "2025-10-08T16:39:49.570812",
-      "error": "Traceback (most recent call last):\n  File \"/home/wilian-blake/Documents/git/RAG-TCC/.venv/bin/scrapy\", line 8, in <module>\n    sys.exit(execute())\n             ~~~~~~~^^\n  File \"/home/wilian-blake/Documents/git/RAG-TCC/.venv/lib/python3.13/site-packages/scrapy/cmdline.py\", line 172, in execute\n    settings = get_project_settings()\n  File \"/home/wilian-blake/Documents/git/RAG-TCC/.venv/lib/python3.13/site-packages/scrapy/utils/project.py\", line 73, in get_project_settings\n    settings.setmodule(settings_module_path, priority=\"project\")\n    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/wilian-blake/Documents/git/RAG-TCC/.venv/lib/python3.13/site-packages/scrapy/settings/__init__.py\", line 481, in setmodule\n    module = import_module(module)\n  File \"/usr/lib/python3.13/importlib/__init__.py\", line 88, in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<frozen importlib._bootstrap>\", line 1387, in _gcd_import\n  File \"<frozen importlib._bootstrap>\", line 1360, in _find_and_load\n  File \"<frozen importlib._bootstrap>\", line 1310, in _find_and_load_unlocked\n  File \"<frozen importlib._bootstrap>\", line 488, in _call_with_frames_removed\n  File \"<frozen importlib._bootstrap>\", line 1387, in _gcd_import\n  File \"<frozen importlib._bootstrap>\", line 1360, in _find_and_load\n  File \"<frozen importlib._bootstrap>\", line 1324, in _find_and_load_unlocked\nModuleNotFoundError: No module named '4r_scraper'\n",
-      "status": "failed"
+      "completed_at": "2025-10-22T23:31:33.578574",
+      "status": "completed"
     },
     {
       "query": {
@@ -28,11 +25,11 @@
         "artigo": "179",
         "url": "https://jurisprudencia.stf.jus.br/pages/search?base=decisoes&pesquisa_inteiro_teor=false&sinonimo=true&plural=true&radicais=false&buscaExata=true&page=1&pageSize=25&queryString=fraude%20%C3%A0%20execu%C3%A7%C3%A3o%20artigo%20179&sort=_score&sortBy=desc"
       },
-      "failed_at": "2025-10-08T16:39:49.802643",
-      "error": "Traceback (most recent call last):\n  File \"/home/wilian-blake/Documents/git/RAG-TCC/.venv/bin/scrapy\", line 8, in <module>\n    sys.exit(execute())\n             ~~~~~~~^^\n  File \"/home/wilian-blake/Documents/git/RAG-TCC/.venv/lib/python3.13/site-packages/scrapy/cmdline.py\", line 172, in execute\n    settings = get_project_settings()\n  File \"/home/wilian-blake/Documents/git/RAG-TCC/.venv/lib/python3.13/site-packages/scrapy/utils/project.py\", line 73, in get_project_settings\n    settings.setmodule(settings_module_path, priority=\"project\")\n    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/wilian-blake/Documents/git/RAG-TCC/.venv/lib/python3.13/site-packages/scrapy/settings/__init__.py\", line 481, in setmodule\n    module = import_module(module)\n  File \"/usr/lib/python3.13/importlib/__init__.py\", line 88, in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<frozen importlib._bootstrap>\", line 1387, in _gcd_import\n  File \"<frozen importlib._bootstrap>\", line 1360, in _find_and_load\n  File \"<frozen importlib._bootstrap>\", line 1310, in _find_and_load_unlocked\n  File \"<frozen importlib._bootstrap>\", line 488, in _call_with_frames_removed\n  File \"<frozen importlib._bootstrap>\", line 1387, in _gcd_import\n  File \"<frozen importlib._bootstrap>\", line 1360, in _find_and_load\n  File \"<frozen importlib._bootstrap>\", line 1324, in _find_and_load_unlocked\nModuleNotFoundError: No module named '4r_scraper'\n",
-      "status": "failed"
+      "completed_at": "2025-10-22T23:31:34.651277",
+      "status": "completed"
     }
   ],
+  "failed_queries": [],
   "total_queries": 3,
-  "initialized_at": "2025-10-08T16:39:49.116761"
+  "initialized_at": "2025-10-22T23:31:31.431428"
 }

@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# Garante que o pacote 4r_scraper pode ser importado ao rodar diretamente
+# Garante que o pacote trf4_scraper pode ser importado ao rodar diretamente
 sys.path.insert(0, str(Path(__file__).parent))
 
 # Configuração global de logging para registrar tudo no arquivo de log do projeto

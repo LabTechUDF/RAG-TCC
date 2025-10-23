@@ -7,7 +7,7 @@ from pathlib import Path
 PARALLEL_BROWSER_COUNT = 1
 # Diretório para persistência do estado compartilhado
 SHARED_STATE_DIR = str(Path(__file__).parent.parent / '.scrapy_state')
-# Scrapy settings for fr_scraper project
+# Scrapy settings for trf4_scraper project
 #
 # For simplicity, this file contains only settings considered important or
 # commonly used. You can find more settings consulting the documentation:
@@ -19,10 +19,10 @@ SHARED_STATE_DIR = str(Path(__file__).parent.parent / '.scrapy_state')
 import os
 from pathlib import Path
 
-BOT_NAME = 'fr_scraper'
+BOT_NAME = 'trf4_scraper'
 
-SPIDER_MODULES = ['fr_scraper.spiders']
-NEWSPIDER_MODULE = 'fr_scraper.spiders'
+SPIDER_MODULES = ['trf4_scraper.spiders']
+NEWSPIDER_MODULE = 'trf4_scraper.spiders'
 
 # ========================================
 # SCRAPY-PLAYWRIGHT INTEGRATION
@@ -125,12 +125,12 @@ DEFAULT_REQUEST_HEADERS = {
 
 # Enable or disable spider middlewares
 SPIDER_MIDDLEWARES = {
-    'fr_scraper.middlewares.TRF4SpiderMiddleware': 543,
+    'trf4_scraper.middlewares.TRF4SpiderMiddleware': 543,
 }
 
 # Enable or disable downloader middlewares
 DOWNLOADER_MIDDLEWARES = {
-    'fr_scraper.middlewares.TRF4DownloaderMiddleware': 543,
+    'trf4_scraper.middlewares.TRF4DownloaderMiddleware': 543,
     'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
     'scrapy.downloadermiddlewares.retry.RetryMiddleware': 550,
 }
@@ -150,10 +150,10 @@ RETRY_PRIORITY_ADJUST = -1
 
 # Configure pipelines
 ITEM_PIPELINES = {
-    'fr_scraper.pipelines.ValidationPipeline': 300,
-    'fr_scraper.pipelines.ArticleBasedJsonWriterPipeline': 400,
-    'fr_scraper.pipelines.StatisticsPipeline': 800,
-    # 'fr_scraper.pipelines.JsonWriterPipeline': 600,  # Disabled - using ArticleBasedJsonWriterPipeline instead
+    'trf4_scraper.pipelines.ValidationPipeline': 300,
+    'trf4_scraper.pipelines.ArticleBasedJsonWriterPipeline': 400,
+    'trf4_scraper.pipelines.StatisticsPipeline': 800,
+    # 'trf4_scraper.pipelines.JsonWriterPipeline': 600,  # Disabled - using ArticleBasedJsonWriterPipeline instead
 }
 
 # ========================================
