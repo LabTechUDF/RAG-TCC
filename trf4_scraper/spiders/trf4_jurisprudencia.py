@@ -1,4 +1,4 @@
-"""
+"""trf4_jurisprudencia
 TRF4 Jurisprudência Spider
 
 Implements the scraping flow described in prompt.md for TRF4.
