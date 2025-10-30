@@ -1,0 +1,30 @@
+sequenceDiagram
+  autonumber
+  participant User as Usuário (Web Chat)
+  participant API as Nossa API
+  participant Clusters as Serviço de Clusters/Indexação
+  participant VDB as Banco Vetorial
+  participant GPT as OpenAI (GPT-5)
+
+  User->>API: Prompt inicial
+  API->>Clusters: Obter metadados/labels de clusterização
+  Clusters-->>API: Metadados de clusterização/indexação
+
+  API->>GPT: "Gerar melhor string de busca" (prompt + clusters)
+  alt Info insuficiente
+    GPT-->>API: "Faltam dados" + perguntas de esclarecimento
+    API-->>User: Solicitar esclarecimentos
+    User-->>API: Respostas adicionais
+    API->>GPT: Atualização com esclarecimentos
+    GPT-->>API: String de busca canônica
+  else Info suficiente
+    GPT-->>API: String de busca canônica
+  end
+
+  API->>VDB: Buscar top-k com a string (filtros, cluster)
+  VDB-->>API: Resultados + metadados
+
+  API->>GPT: Histórico + prompt (ou melhorado) + resultados
+  GPT-->>API: Resposta final (jurídica) + uso de trechos
+
+  API-->>User: Resposta final + trechos e referências
