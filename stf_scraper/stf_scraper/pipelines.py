@@ -344,3 +344,33 @@ class StatisticsPipeline:
             self.stats['items_with_content'] += 1
         
         return item
+    
+
+class JsonWriterPipeline:
+    def open_spider(self, spider):
+        self.file = open(f"data/{spider.name}_output.json", "w", encoding="utf-8")
+        self.first_item = True
+        self.file.write("[")
+
+    def close_spider(self, spider):
+        self.file.write("]")
+        self.file.close()
+
+
+    def process_item(self, item, spider):
+        # Força a ordem das chaves (cluster_name → title → content → url)
+        ordered_item = {
+            "cluster_name": item.get("cluster_name", "Documentos de suporte SEEU"),
+            "title": item.get("title", ""),
+            "content": item.get("content", ""),
+            "url": item.get("url", "")
+        }
+
+        if not self.first_item:
+            self.file.write(",\n")
+        else:
+            self.first_item = False
+
+        json.dump(ordered_item, self.file, ensure_ascii=False, indent=2)
+        return item
+
