@@ -1,0 +1,24 @@
+{
+  "name": "interface",
+  "version": "1.0.0",
+  "description": "<<<<<<< HEAD\r # Next-tela\r =======\r # Nuxt AI Chatbot Template",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@nuxt/ui": "^4.1.0",
+    "nuxt": "^4.2.0"
+  },
+  "devDependencies": {
+    "@iconify-json/lucide": "^1.2.72",
+    "@iconify-json/simple-icons": "^1.2.57"
+  }
+}

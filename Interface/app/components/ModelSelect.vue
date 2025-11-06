@@ -1,10 +1,25 @@
 <script setup lang="ts">
 const { model, models } = useModels()
 
-const items = computed(() => models.map(model => ({
-  label: model,
-  value: model,
-  icon: `i-simple-icons-${model.split('/')[0]}`
+// Mapeia modelos para ícones disponíveis
+function getModelIcon(modelName: string): string {
+  const provider = modelName.split('/')[0]
+  
+  const iconMap: Record<string, string> = {
+    'openai': 'i-simple-icons-openai',
+    'anthropic': 'i-simple-icons-anthropic',
+    'google': 'i-simple-icons-google',
+    'gpt-5-nano': 'i-lucide-sparkles', // Ícone genérico para modelos sem provider
+    'default': 'i-lucide-bot'
+  }
+  
+  return iconMap[provider] || iconMap[modelName] || iconMap.default
+}
+
+const items = computed(() => models.map(m => ({
+  label: m,
+  value: m,
+  icon: getModelIcon(m)
 })))
 </script>
 
@@ -12,7 +27,7 @@ const items = computed(() => models.map(model => ({
   <USelectMenu
     v-model="model"
     :items="items"
-    :icon="`i-simple-icons-${model.split('/')[0]}`"
+    :icon="getModelIcon(model)"
     variant="ghost"
     value-key="value"
     class="hover:bg-default focus:bg-default data-[state=open]:bg-default"

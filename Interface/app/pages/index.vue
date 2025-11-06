@@ -25,20 +25,24 @@ async function sendToOpenAI(prompt: string) {
   try {
     const config = useRuntimeConfig()
     
+    interface OpenAIMessage {
+      role: 'system' | 'user' | 'assistant'
+      content: string
+    }
+    
     interface OpenAIResponse {
       id: string
       object: string
-      status: string
-      output: Array<{
-        type: string
-        content?: Array<{
-          type: string
-          text: string
-        }>
+      created: number
+      model: string
+      choices: Array<{
+        index: number
+        message: OpenAIMessage
+        finish_reason: string
       }>
     }
     
-    const result = await $fetch<OpenAIResponse>('https://api.openai.com/v1/responses', {
+    const result = await $fetch<OpenAIResponse>('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${config.public.openaiApiKey}`,
@@ -46,32 +50,24 @@ async function sendToOpenAI(prompt: string) {
         'OpenAI-Project': config.public.openaiProjectId as string
       },
       body: {
-        model: model.value?.replace('openai/', '') || 'gpt-5-nano',
-        input: prompt
+        model: model.value?.replace('openai/', '') || 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ]
       }
     })
     
     // Extrai o texto da resposta da estrutura da OpenAI
-    let extractedText = ''
+    const extractedText = result?.choices?.[0]?.message?.content || 'Não foi possível extrair a resposta da OpenAI'
     
-    if (result?.output) {
-      for (const outputItem of result.output) {
-        if (outputItem.type === 'message' && outputItem.content) {
-          for (const contentItem of outputItem.content) {
-            if (contentItem.type === 'output_text' && contentItem.text) {
-              extractedText = contentItem.text
-              break
-            }
-          }
-        }
-        if (extractedText) break
-      }
-    }
-    
-    response.value = extractedText || 'Não foi possível extrair a resposta da OpenAI'
-  } catch (error) {
+    response.value = extractedText
+  } catch (error: any) {
     console.error('Error sending to OpenAI:', error)
-    response.value = 'Desculpe, ocorreu um erro ao processar sua solicitação.'
+    const errorMessage = error?.data?.error?.message || error?.message || 'Erro desconhecido'
+    response.value = `Desculpe, ocorreu um erro ao processar sua solicitação: ${errorMessage}`
   } finally {
     loading.value = false
   }
@@ -98,9 +94,20 @@ function onSubmit() {
   }
 }
 
-//const quickChats = [
-  
-//]
+const quickChats = [
+  {
+    label: 'Explique um conceito jurídico',
+    icon: 'i-lucide-book-open'
+  },
+  {
+    label: 'Analise uma jurisprudência',
+    icon: 'i-lucide-scale'
+  },
+  {
+    label: 'Resuma um artigo de lei',
+    icon: 'i-lucide-file-text'
+  }
+]
 </script>
 
 <template>
@@ -167,14 +174,6 @@ function onSubmit() {
                 @click="copyToClipboard(response)"
               >
                 Copiar
-              </UButton>
-              <UButton 
-                icon="i-lucide-message-circle" 
-                size="xs" 
-                variant="outline" 
-                @click="createChatFromResponse()"
-              >
-                Continuar Chat
               </UButton>
             </div>
           </div>
