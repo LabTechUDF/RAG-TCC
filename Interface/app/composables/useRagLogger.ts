@@ -83,9 +83,10 @@ export function useRagLogger() {
     if (!entry.g1.optimized_query || entry.g1.optimized_query.length === 0) return 'ERROR'
     if (entry.g2.answer_chars === 0) return 'ERROR'
     
-    // Check citations validity
+    // Check citations validity (case-insensitive)
+    const docIdsLower = entry.vdb.doc_ids.map(id => id.toLowerCase())
     const invalidCitations = entry.g2.citations_used.filter(
-      cite => !entry.vdb.doc_ids.includes(cite)
+      cite => !docIdsLower.includes(cite.toLowerCase())
     )
     if (invalidCitations.length > 0) return 'ERROR'
     
@@ -244,9 +245,10 @@ export function useRagLogger() {
       })
     }
     
-    // Validate citations
+    // Validate citations (case-insensitive comparison)
+    const docIdsLower = entry.vdb.doc_ids.map(id => id.toLowerCase())
     const invalidCitations = entry.g2.citations_used.filter(
-      cite => !entry.vdb.doc_ids.includes(cite)
+      cite => !docIdsLower.includes(cite.toLowerCase())
     )
     if (invalidCitations.length > 0) {
       checks.push({
