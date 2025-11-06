@@ -18,6 +18,45 @@ const { search: vectorSearch } = useVectorSearch()
 const { composeAnswer, convertToRetrievedDocuments } = useAnswerComposer()
 const { generateRequestId, logToConsole, generateLog } = useRagLogger()
 
+// Computed: mapeia IDs de citações para documentos completos com metadados
+const enrichedCitations = computed(() => {
+  if (!citations.value || citations.value.length === 0) {
+    return []
+  }
+  
+  return citations.value
+    .map(citationId => {
+      // Busca documento completo nos resultados vetoriais (case-insensitive)
+      const doc = vectorResults.value.find(
+        result => result.id.toLowerCase() === citationId.toLowerCase()
+      )
+      
+      if (!doc) {
+        // Fallback para citação não encontrada
+        return {
+          id: citationId,
+          title: 'Documento não encontrado',
+          notFound: true
+        }
+      }
+      
+      return {
+        id: doc.id,
+        title: doc.title || 'Documento Jurídico',
+        case_number: doc.case_number,
+        relator: doc.relator,
+        source: doc.source,
+        date: doc.date,
+        court: doc.court,
+        article: doc.article,
+        text: doc.text,
+        score: doc.score,
+        notFound: false
+      }
+    })
+    .filter(doc => !doc.notFound) // Remove documentos não encontrados
+})
+
 async function createChat(prompt: string) {
   input.value = prompt
   loading.value = true
@@ -407,21 +446,53 @@ const quickChats = [
             </div>
             
             <!-- Citations List (apenas no modo RAG se houver citações) -->
-            <div v-if="searchMode === 'rag' && citations.length > 0" class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
-              <div class="text-xs font-medium text-blue-700 dark:text-blue-300 mb-2">
-                📖 Fontes Citadas:
+            <div v-if="searchMode === 'rag' && enrichedCitations.length > 0" class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+              <div class="text-xs font-medium text-blue-700 dark:text-blue-300 mb-3 flex items-center gap-2">
+                <UIcon name="i-lucide-book-open" class="h-4 w-4" />
+                📖 Fontes Citadas ({{ enrichedCitations.length }})
               </div>
-              <div class="flex flex-wrap gap-1">
-                <UBadge
-                  v-for="citation in citations"
-                  :key="citation"
-                  size="xs"
-                  color="blue"
-                  variant="outline"
-                  class="font-mono"
+              
+              <div class="space-y-2">
+                <div 
+                  v-for="citation in enrichedCitations" 
+                  :key="citation.id"
+                  class="p-3 bg-white dark:bg-gray-800 rounded border border-blue-200 dark:border-blue-700 hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
                 >
-                  [{{ citation }}]
-                </UBadge>
+                  <div class="flex items-start gap-2">
+                    <UBadge size="xs" color="blue" variant="solid" class="font-mono shrink-0 mt-0.5">
+                      [{{ citation.id }}]
+                    </UBadge>
+                    <div class="flex-1 space-y-1.5">
+                      <div class="text-xs font-medium text-gray-900 dark:text-gray-100">
+                        {{ citation.title }}
+                      </div>
+                      
+                      <!-- Metadados jurídicos -->
+                      <div class="flex flex-wrap gap-x-3 gap-y-1.5 text-xs text-gray-600 dark:text-gray-400">
+                        <span v-if="citation.case_number" class="flex items-center gap-1">
+                          <UIcon name="i-lucide-hash" class="h-3 w-3 shrink-0" />
+                          <span class="font-mono">{{ citation.case_number }}</span>
+                        </span>
+                        <span v-if="citation.relator" class="flex items-center gap-1">
+                          <UIcon name="i-lucide-user" class="h-3 w-3 shrink-0" />
+                          Rel. {{ citation.relator }}
+                        </span>
+                        <span v-if="citation.source" class="flex items-center gap-1">
+                          <UIcon name="i-lucide-building" class="h-3 w-3 shrink-0" />
+                          {{ citation.source }}
+                        </span>
+                        <span v-if="citation.date" class="flex items-center gap-1">
+                          <UIcon name="i-lucide-calendar" class="h-3 w-3 shrink-0" />
+                          {{ citation.date }}
+                        </span>
+                        <span v-if="citation.score" class="flex items-center gap-1">
+                          <UIcon name="i-lucide-target" class="h-3 w-3 shrink-0" />
+                          {{ (citation.score * 100).toFixed(1) }}% relevância
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
             

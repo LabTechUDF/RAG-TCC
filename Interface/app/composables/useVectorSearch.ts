@@ -12,6 +12,9 @@ interface SearchDocument {
   code?: string
   article?: string
   date?: string
+  case_number?: string  // Número do processo/caso
+  relator?: string      // Relator do caso
+  source?: string       // Fonte do documento (STF, STJ, etc)
   meta?: Record<string, any>
   score: number
 }

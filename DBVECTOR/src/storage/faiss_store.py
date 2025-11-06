@@ -156,6 +156,8 @@ class FAISSStore(VectorStore):
             internal_ids.append(internal_id)
             
             # Armazena metadados
+            # Extrai campos jurídicos específicos do meta se disponíveis
+            meta = doc.meta or {}
             self.metadata[internal_id] = {
                 'id': doc.id,
                 'title': doc.title,
@@ -164,6 +166,9 @@ class FAISSStore(VectorStore):
                 'code': doc.code,
                 'article': doc.article,
                 'date': doc.date,
+                'case_number': meta.get('case_number'),
+                'relator': meta.get('relator'),
+                'source': meta.get('source'),
                 'meta': doc.meta
             }
         
@@ -204,6 +209,16 @@ class FAISSStore(VectorStore):
                     date=doc_data['date'],
                     meta=doc_data['meta']
                 )
+                # Adiciona campos jurídicos específicos ao meta se não existirem
+                if not doc.meta:
+                    doc.meta = {}
+                if 'case_number' not in doc.meta and doc_data.get('case_number'):
+                    doc.meta['case_number'] = doc_data['case_number']
+                if 'relator' not in doc.meta and doc_data.get('relator'):
+                    doc.meta['relator'] = doc_data['relator']
+                if 'source' not in doc.meta and doc_data.get('source'):
+                    doc.meta['source'] = doc_data['source']
+                    
                 results.append(SearchResult(doc=doc, score=float(score)))
         
         return results

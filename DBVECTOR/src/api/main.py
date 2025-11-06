@@ -33,6 +33,12 @@ class SearchResultAPI(BaseModel):
     code: Optional[str] = None
     article: Optional[str] = None
     date: Optional[str] = None
+    
+    # Metadados jurídicos adicionais
+    case_number: Optional[str] = Field(None, description="Número do processo/caso")
+    relator: Optional[str] = Field(None, description="Relator do caso")
+    source: Optional[str] = Field(None, description="Fonte do documento (STF, STJ, etc)")
+    
     meta: Optional[dict] = None
     score: float
 
@@ -164,6 +170,7 @@ async def search_documents(request: SearchRequest):
         api_results = []
         for result in results:
             doc = result.doc
+            meta = doc.meta or {}
             api_result = SearchResultAPI(
                 id=doc.id,
                 title=doc.title,
@@ -172,6 +179,9 @@ async def search_documents(request: SearchRequest):
                 code=doc.code,
                 article=doc.article,
                 date=doc.date,
+                case_number=meta.get('case_number'),
+                relator=meta.get('relator'),
+                source=meta.get('source'),
                 meta=doc.meta,
                 score=result.score
             )
