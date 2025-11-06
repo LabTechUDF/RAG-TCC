@@ -1,0 +1,27 @@
+{
+  "num_vectors": 41028,
+  "dimension": 384,
+  "expected_dimension": 384,
+  "dimension_ok": true,
+  "has_nan": false,
+  "has_inf": false,
+  "num_nan": 0,
+  "num_inf": 0,
+  "norm_l2": {
+    "mean": 1.0,
+    "p5": 1.0,
+    "p95": 1.0
+  },
+  "collapsed_vectors": 0,
+  "collapsed_pct": 0.0,
+  "cosine_similarity": {
+    "mean": 0.6774,
+    "p5": 0.5387,
+    "p95": 0.9053
+  },
+  "near_duplicates": {
+    "count": 62281,
+    "pct": 0.0074,
+    "threshold": 0.995
+  }
+}

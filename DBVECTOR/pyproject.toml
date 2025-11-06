@@ -1,0 +1,97 @@
+[tool.poetry]
+name = "rag-juridico"
+version = "1.0.0"
+description = "Sistema RAG para documentos jurídicos com FAISS e OpenSearch"
+authors = ["Gabriel-br07 <gabriel@example.com>"]
+readme = "README.md"
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.12,<3.13"
+torch = ">=2.0.0,<2.5.0"
+transformers = ">=4.35.0,<4.46.0"
+faiss-cpu = "^1.7.4"
+opensearch-py = "^2.3.0"
+sentence-transformers = "^2.2.2"
+numpy = { version = ">=1.21.0,<2.0", allow-prereleases = false, source = "pypi" }
+pandas = "^2.0.0"
+pyarrow = "^14.0.1"
+fastapi = "^0.100.0"
+uvicorn = { extras = ["standard"], version = "^0.22.0" }
+python-dotenv = "^1.0.0"
+pydantic = "^2.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+httpx = "^0.24.0"
+pytest-cov = "^4.1.0"
+pytest-asyncio = "^0.21.0"
+black = "^23.0.0"
+isort = "^5.12.0"
+flake8 = "^6.0.0"
+pytest-benchmark = "^4.0.0"
+
+[tool.poetry.scripts]
+rag-demo = "demo:main"
+faiss-build = "src.pipelines.build_faiss:main"
+faiss-query = "src.pipelines.query_faiss:main"
+opensearch-build = "src.pipelines.build_opensearch:main"
+opensearch-query = "src.pipelines.query_opensearch:main"
+rag-api = "src.api.main:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 100
+known_first_party = ["src"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q --strict-markers"
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "opensearch: marks tests that require OpenSearch container",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*", "*/conftest.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
