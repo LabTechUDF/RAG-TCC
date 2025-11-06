@@ -15,7 +15,8 @@ export default defineNuxtConfig({
     // Public keys (exposed to client)
     public: {
       openaiApiKey: process.env.OPENAI_API_KEY,
-      openaiProjectId: process.env.OPENAI_PROJECT_ID
+      openaiProjectId: process.env.OPENAI_PROJECT_ID,
+      dbvectorApiUrl: process.env.NUXT_PUBLIC_DBVECTOR_API_URL || 'http://localhost:8000'
     }
   }
 })
