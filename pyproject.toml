@@ -37,6 +37,7 @@ python-dateutil = ">=2.8.0"
 
 # Logging and monitoring
 structlog = ">=23.1.0"
+filelock = "^3.20.0"
 
 [tool.poetry.group.dev.dependencies]
 # Development and testing tools
