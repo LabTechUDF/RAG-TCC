@@ -2,28 +2,32 @@
 const input = ref('')
 const loading = ref(false)
 const response = ref('')
+const ragSources = ref<any[]>([])
 
 const { model } = useModels()
-
-async function createChat(prompt: string) {
-  input.value = prompt
-  loading.value = true
-  const chat = await $fetch('/api/chats', {
-    method: 'POST',
-    body: { input: prompt }
-  })
-
-  refreshNuxtData('chats')
-  navigateTo(`/chat/${chat?.id}`)
-}
+const { ragEnabled } = useRagMode()
 
 async function sendToOpenAI(prompt: string) {
   loading.value = true
   response.value = ''
+  ragSources.value = []
   input.value = prompt
+  
+  // Se RAG está ativo, usa chat-rag
+  if (ragEnabled.value) {
+    await sendWithRAG(prompt)
+    return
+  }
   
   try {
     const config = useRuntimeConfig()
+    
+    // Validação das credenciais
+    if (!config.public.openaiApiKey || config.public.openaiApiKey === 'your_openai_api_key_here') {
+      response.value = 'API Key da OpenAI não configurada. Configure no arquivo .env'
+      loading.value = false
+      return
+    }
     
     interface OpenAIResponse {
       id: string
@@ -69,9 +73,53 @@ async function sendToOpenAI(prompt: string) {
     }
     
     response.value = extractedText || 'Não foi possível extrair a resposta da OpenAI'
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error sending to OpenAI:', error)
-    response.value = 'Desculpe, ocorreu um erro ao processar sua solicitação.'
+    const errorMessage = error?.data?.message || error?.message || 'Erro desconhecido'
+    response.value = `Erro ao processar solicitação: ${errorMessage}`
+  } finally {
+    loading.value = false
+  }
+}
+
+async function sendWithRAG(prompt: string) {
+  try {
+    const result = await $fetch<any>('/api/chat-rag', {
+      method: 'POST',
+      body: { 
+        query: prompt, 
+        k: 5,  // top-k = 5 documentos
+        user_id: 'guest',  // TODO: Integrar com autenticação real
+        session_id: `session_${Date.now()}`
+      }
+    })
+
+    response.value = result.answer || 'Sem resposta'
+    
+    // Mapeia contextos completos para CitationCards
+    ragSources.value = result.contexts?.map((ctx: any) => ({
+      id: ctx.id,
+      title: ctx.title || 'Documento sem título',
+      text: ctx.text,
+      court: ctx.court,
+      code: ctx.code,
+      article: ctx.article,
+      date: ctx.date,
+      score: ctx.score,
+      meta: ctx.meta
+    })) || []
+    
+    // Log de auditoria no console
+    console.log('[RAG Query]', {
+      query: prompt,
+      sources_count: ragSources.value.length,
+      backend: result.backend,
+      timestamp: new Date().toISOString()
+    })
+  } catch (error: any) {
+    console.error('Error with RAG:', error)
+    const errorMessage = error?.data?.message || error?.message || 'Erro ao conectar com RAG'
+    response.value = `Erro: ${errorMessage}`
   } finally {
     loading.value = false
   }
@@ -86,34 +134,37 @@ async function copyToClipboard(text: string) {
   }
 }
 
-async function createChatFromResponse() {
-  if (input.value) {
-    await createChat(input.value)
-  }
-}
-
 function onSubmit() {
   if (input.value.trim()) {
     sendToOpenAI(input.value)
   }
 }
 
-//const quickChats = [
-  
-//]
+const quickChats: Array<{ label: string; icon: string }> = [
+  { label: 'O que é um precedente judicial?', icon: 'i-lucide-scale' },
+  { label: 'Explique sobre recursos no STF', icon: 'i-lucide-book-open' },
+  { label: 'Como funciona a repercussão geral?', icon: 'i-lucide-users' }
+]
+
 </script>
 
 <template>
-  <UDashboardPanel id="home" :ui="{ body: 'p-0 sm:p-0' }">
+  <UDashboardPanel id="home" :ui="{ body: 'p-4 sm:p-6' }">
     <template #header>
       <DashboardNavbar />
     </template>
 
     <template #body>
-      <UContainer class="flex-1 flex flex-col justify-center gap-4 sm:gap-6 py-8">
-        <h1 class="text-3xl sm:text-4xl text-highlighted font-bold">
-          Como posso ajudar?
-        </h1>
+      <UContainer class="flex-1 flex flex-col justify-center gap-6 py-8 max-w-4xl mx-auto">
+        <!-- Cabeçalho com Título e Seletor de Modo -->
+        <div class="text-center space-y-4">
+          <h1 class="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white">
+            Como posso ajudar?
+          </h1>
+          
+          <!-- Seletor de Modo RAG/Simples logo abaixo do título -->
+          <SearchModeSelector />
+        </div>
 
         <UChatPrompt
           v-model="input"
@@ -123,10 +174,6 @@ function onSubmit() {
           @submit="onSubmit"
         >
           <UChatPromptSubmit color="neutral" />
-
-          <template #footer>
-            <ModelSelect v-model="model" />
-          </template>
         </UChatPrompt>
 
         <div class="flex flex-wrap gap-2">
@@ -148,35 +195,31 @@ function onSubmit() {
         <div v-if="response || loading" class="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
           <div v-if="loading" class="flex items-center gap-2 text-gray-600 dark:text-gray-400">
             <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-500"></div>
-            <span>Processando sua solicitação...</span>
+            <span>{{ ragEnabled ? 'Buscando documentos e gerando resposta...' : 'Processando sua solicitação...' }}</span>
           </div>
           
-          <div v-else class="space-y-3">
+          <div v-else class="space-y-4">
             <div class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-              <UIcon name="i-lucide-sparkles" class="h-4 w-4" />
-              Resposta da IA
+              <UIcon :name="ragEnabled ? 'i-lucide-database' : 'i-lucide-sparkles'" class="h-4 w-4" />
+              {{ ragEnabled ? 'Resposta com RAG' : 'Resposta da IA' }}
             </div>
             <div class="prose prose-sm dark:prose-invert max-w-none">
               <p class="text-gray-900 dark:text-gray-100 leading-relaxed">{{ response }}</p>
             </div>
-            <div class="flex gap-2">
-              <UButton 
-                icon="i-lucide-copy" 
-                size="xs" 
-                variant="outline" 
-                @click="copyToClipboard(response)"
-              >
-                Copiar
-              </UButton>
-              <UButton 
-                icon="i-lucide-message-circle" 
-                size="xs" 
-                variant="outline" 
-                @click="createChatFromResponse()"
-              >
-                Continuar Chat
-              </UButton>
+
+            <!-- Cards de Citações (Componente Dedicado) -->
+            <div v-if="ragEnabled && ragSources.length > 0" class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <CitationCards :sources="ragSources" />
             </div>
+
+            <UButton 
+              icon="i-lucide-copy" 
+              size="xs" 
+              variant="outline" 
+              @click="copyToClipboard(response)"
+            >
+              Copiar resposta
+            </UButton>
           </div>
         </div>
       </UContainer>

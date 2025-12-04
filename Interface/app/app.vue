@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import AppWrapper from './components/AppWrapper.vue'
+
 const colorMode = useColorMode()
 
 const color = computed(() => colorMode.value === 'dark' ? '#1b1718' : 'white')
@@ -17,17 +19,14 @@ useHead({
   }
 })
 
-const title = 'Nuxt AI Chatbot template'
-const description = 'A full-featured, hackable Nuxt AI chatbot template made with Nuxt UI.'
+const title = 'RAG Chat Jurídico - Justiça 4.0'
+const description = 'Sistema de busca vetorial e chat com IA para pesquisa jurisprudencial.'
 
 useSeoMeta({
   title,
   description,
   ogTitle: title,
-  ogDescription: description,
-  ogImage: 'https://ui.nuxt.com/assets/templates/nuxt/chat-light.png',
-  twitterImage: 'https://ui.nuxt.com/assets/templates/nuxt/chat-light.png',
-  twitterCard: 'summary_large_image'
+  ogDescription: description
 })
 </script>
 
