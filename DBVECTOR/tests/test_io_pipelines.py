@@ -5,6 +5,9 @@ import json
 import pytest
 from pathlib import Path
 from src.tools.tratamento_dados import DataProcessor
+from src.tools.chunking import chunk_documents
+from src.schema import Doc, get_dummy_docs
+from src import config
 
 
 def test_ingest_json_list(tmp_path):
@@ -373,3 +376,120 @@ def test_complex_nested_data(tmp_path):
     assert round_trip_doc["meta"]["tags"] == ["tag1", "tag2", "tag3"]
     assert round_trip_doc["meta"]["nested"]["level1"]["level2"]["value"] == 123
     assert len(round_trip_doc["meta"]["array_of_objects"]) == 2
+
+
+class TestChunkingInPipeline:
+    """Testes de integração do chunking no pipeline completo."""
+    
+    def test_build_faiss_pipeline_with_chunking(self):
+        """Testa que pipeline usa chunking e gera chunks válidos."""
+        # Usa documentos dummy do schema
+        docs = get_dummy_docs()
+        
+        # Aplica chunking como no pipeline
+        chunk_docs = chunk_documents(docs, config.CHUNK_SIZE, config.CHUNK_OVERLAP)
+        
+        # Validações básicas
+        assert len(chunk_docs) > 0, "Deve gerar pelo menos um chunk"
+        assert len(chunk_docs) >= len(docs), "Chunks devem ser >= docs originais"
+        
+        # Valida que todos chunks têm estrutura correta
+        for chunk_doc in chunk_docs:
+            assert chunk_doc.id is not None
+            assert chunk_doc.text is not None
+            assert len(chunk_doc.text) > 0
+            assert chunk_doc.meta is not None
+            assert 'original_id' in chunk_doc.meta
+            assert 'chunk_index' in chunk_doc.meta
+            assert 'char_start' in chunk_doc.meta
+            assert 'char_end' in chunk_doc.meta
+            assert chunk_doc.meta['is_chunk'] is True
+    
+    def test_chunking_preserves_searchability(self):
+        """Testa que chunking preserva informações necessárias para busca."""
+        docs = get_dummy_docs()
+        chunk_docs = chunk_documents(docs, chunk_size=500, overlap=100)
+        
+        # Todos chunks devem ter texto suficiente para embedding
+        for chunk_doc in chunk_docs:
+            assert len(chunk_doc.text) >= 10, "Chunk muito pequeno para embedding"
+            
+        # Verifica que metadados jurídicos foram preservados
+        for chunk_doc in chunk_docs:
+            # Pelo menos title ou court deve existir
+            assert chunk_doc.title is not None or chunk_doc.court is not None
+    
+    def test_pipeline_chunk_count_validation(self):
+        """Valida contagem de documentos vs chunks no pipeline."""
+        docs = get_dummy_docs()
+        original_count = len(docs)
+        
+        # Aplica chunking
+        chunk_docs = chunk_documents(docs, chunk_size=200, overlap=50)
+        chunk_count = len(chunk_docs)
+        
+        # Com documentos dummy (textos médios), deve gerar mais chunks que docs
+        print(f"Original docs: {original_count}, Chunks: {chunk_count}")
+        
+        # Validação: pelo menos alguns docs devem ter sido divididos
+        assert chunk_count > original_count, \
+            f"Esperava chunks > docs, mas {chunk_count} <= {original_count}"
+    
+    def test_chunk_metadata_for_faiss_store(self):
+        """Valida que chunks têm estrutura compatível com FAISSStore.index()."""
+        docs = get_dummy_docs()
+        chunk_docs = chunk_documents(docs, chunk_size=500, overlap=100)
+        
+        # FAISSStore.index() espera Doc com: id, text, e opcionalmente metadados
+        for chunk_doc in chunk_docs:
+            # Campos obrigatórios
+            assert hasattr(chunk_doc, 'id')
+            assert hasattr(chunk_doc, 'text')
+            
+            # Campos opcionais mas úteis
+            assert hasattr(chunk_doc, 'title')
+            assert hasattr(chunk_doc, 'court')
+            assert hasattr(chunk_doc, 'meta')
+            
+            # Meta deve ter info de chunking
+            if chunk_doc.meta:
+                assert 'original_id' in chunk_doc.meta
+                assert 'chunk_index' in chunk_doc.meta
+    
+    def test_chunking_with_custom_sizes(self):
+        """Testa chunking com tamanhos customizados."""
+        docs = get_dummy_docs()
+        
+        # Chunks pequenos
+        small_chunks = chunk_documents(docs, chunk_size=100, overlap=20)
+        
+        # Chunks grandes
+        large_chunks = chunk_documents(docs, chunk_size=2000, overlap=400)
+        
+        # Chunks pequenos devem gerar mais fragmentos
+        assert len(small_chunks) > len(large_chunks), \
+            "Chunks menores devem gerar mais fragmentos"
+        
+        # Todos devem ter estrutura válida
+        for chunk_doc in small_chunks + large_chunks:
+            assert chunk_doc.id is not None
+            assert len(chunk_doc.text) > 0
+    
+    def test_original_doc_reconstruction_info(self):
+        """Valida que é possível rastrear chunks de volta ao doc original."""
+        docs = get_dummy_docs()
+        chunk_docs = chunk_documents(docs, chunk_size=300, overlap=50)
+        
+        # Para cada doc original, deve haver pelo menos um chunk
+        for original_doc in docs:
+            matching_chunks = [
+                c for c in chunk_docs 
+                if c.meta.get('original_id') == original_doc.id
+            ]
+            assert len(matching_chunks) > 0, \
+                f"Doc {original_doc.id} não gerou chunks"
+            
+            # Chunks devem estar ordenados por chunk_index
+            indices = [c.meta['chunk_index'] for c in matching_chunks]
+            assert indices == sorted(indices), \
+                f"Chunks de {original_doc.id} não estão ordenados"

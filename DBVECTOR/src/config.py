@@ -55,6 +55,17 @@ MIN_NDCG5 = float(os.getenv("MIN_NDCG5", "0.70"))
 # Inspeção de Embeddings
 NEAR_DUPES_MAX_PCT = float(os.getenv("NEAR_DUPES_MAX_PCT", "1"))
 
+# Chunking Configuration
+# CHUNK_SIZE: Tamanho máximo de cada chunk em caracteres.
+# Valor padrão de 1000 caracteres garante chunks não muito grandes para embeddings
+# e não muito pequenos para manter contexto semântico adequado.
+CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "1000"))
+
+# CHUNK_OVERLAP: Sobreposição entre chunks consecutivos em caracteres.
+# Valor padrão de 200 caracteres (20% do chunk_size) ajuda a preservar contexto
+# nas bordas dos chunks, melhorando a recuperação de informações que cruzam limites.
+CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "200"))
+
 def get_opensearch_config() -> dict:
     """Retorna configuração para cliente OpenSearch."""
     config = {
