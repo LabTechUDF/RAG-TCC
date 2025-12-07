@@ -1,12 +1,16 @@
 # 🏛️ RAG Jurídico
 
-Sistema de **Retrieval-Augmented Generation (RAG)** para documentos jurídicos com busca vetorial, desenvolvido para começar com **FAISS** local e migrar facilmente para **OpenSearch** distribuído.
+Sistema de **Retrieval-Augmented Generation (RAG)** para documentos jurídicos com busca vetorial e **integração LangChain**, desenvolvido para começar com **FAISS** local e migrar facilmente para **OpenSearch** distribuído.
 
 ## 🎯 Visão Geral
 
 Este projeto oferece uma infraestrutura completa de RAG jurídico com:
 
 - **Busca vetorial** com embeddings semânticos (sentence-transformers)
+- **LangChain integration** para otimização de queries e geração de respostas com LLM
+- **Chunking inteligente** com RecursiveCharacterTextSplitter otimizado para texto jurídico
+- **Query Optimizer** com LLM para extração de filtros e detecção de ambiguidades
+- **Memória conversacional** para contexto multi-turno
 - **Dois backends intercambiáveis**: FAISS (local) e OpenSearch (distribuído)
 - **API REST** com FastAPI para integração
 - **Testes abrangentes** com pytest (unitários e integração)
@@ -16,12 +20,32 @@ Este projeto oferece uma infraestrutura completa de RAG jurídico com:
 ## 🏗️ Arquitetura
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   API FastAPI   │    │   Embeddings     │    │  Vector Store   │
-│  /search        │◄──►│ sentence-transf. │◄──►│ FAISS/OpenSrch │
-│  /health        │    │ all-MiniLM-L6-v2 │    │ cosine similarity│
-│  /docs          │    │ dim=384          │    │ k-NN search     │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                        API FastAPI                               │
+│  /search       - Busca vetorial básica                          │
+│  /rag/chat     - RAG completo com LLM (LangChain)               │
+│  /rag/sessions - Gerenciamento de conversas                     │
+│  /health       - Health check                                   │
+│  /docs         - Documentação interativa                        │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+        ┌────────────────────┼────────────────────┐
+        │                    │                    │
+┌───────▼───────┐   ┌────────▼────────┐  ┌───────▼──────────┐
+│ Query         │   │   Embeddings     │  │  Vector Store    │
+│ Optimizer     │   │ sentence-transf. │  │ FAISS/OpenSearch │
+│ (LLM)         │   │ all-MiniLM-L6-v2 │  │ cosine similarity│
+└───────────────┘   │ dim=384          │  │ k-NN search      │
+                    └──────────────────┘  └──────────────────┘
+        │
+┌───────▼────────────────────────────────────────┐
+│  LangChain RAG Pipeline                        │
+│  1. Query Optimization (LLM)                   │
+│  2. Document Retrieval (Vector Search)         │
+│  3. Context Augmentation (Chunking)            │
+│  4. Response Generation (LLM)                  │
+│  5. Conversational Memory                      │
+└────────────────────────────────────────────────┘
 ```
 
 ## 📋 Pré-requisitos
@@ -239,7 +263,31 @@ QUERY=direitos fundamentais
 # API
 API_HOST=0.0.0.0
 API_PORT=8000
+
+# ==============================================================================
+# CONFIGURAÇÕES LANGCHAIN RAG (Novo!)
+# ==============================================================================
+
+# API Key da OpenAI para LLM (query optimization e geração de respostas)
+# Obtenha sua chave em: https://platform.openai.com/api-keys
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Configurações de Chunking
+CHUNK_SIZE=1000            # Tamanho máximo de cada chunk em caracteres
+CHUNK_OVERLAP=200          # Sobreposição entre chunks em caracteres
 ```
+
+### 🔑 Como Obter API Key da OpenAI
+
+1. Acesse [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+2. Faça login ou crie uma conta
+3. Clique em "Create new secret key"
+4. Copie a chave e adicione no arquivo `.env`:
+   ```bash
+   OPENAI_API_KEY=sk-proj-...
+   ```
+
+**Nota:** O sistema funciona sem a API key (modo básico), mas os recursos de LangChain RAG (`/rag/chat`, query optimization) ficarão indisponíveis.
 
 ## 🔄 Workflows
 
@@ -788,6 +836,87 @@ def create_canonical_text(item: dict) -> str:
    - Cluster OpenSearch multi-nó
    - Cache Redis para queries frequentes
 
+## 🤖 Funcionalidades LangChain RAG
+
+### 1. Chunking Inteligente
+
+Documentos longos são automaticamente divididos em chunks menores usando `RecursiveCharacterTextSplitter`:
+
+```python
+from src.tools.chunking import chunk_documents
+from src.schema import Doc
+
+docs = [Doc(id="doc1", text="texto longo...", title="Documento")]
+chunks = chunk_documents(docs, chunk_size=1000, overlap=200)
+
+# Cada chunk preserva metadados originais + informações de chunking
+# chunk.meta = {
+#   'original_id': 'doc1',
+#   'chunk_index': 0,
+#   'char_start': 0,
+#   'char_end': 1000,
+#   'is_chunk': True
+# }
+```
+
+**Configuração:**
+- `CHUNK_SIZE`: Tamanho máximo em caracteres (padrão: 1000)
+- `CHUNK_OVERLAP`: Sobreposição entre chunks (padrão: 200)
+
+### 2. Query Optimization com LLM
+
+O `QueryOptimizer` usa LLM para:
+- Expandir abreviações jurídicas (CP → Código Penal)
+- Extrair filtros estruturados (tribunal, artigo, data)
+- Detectar ambiguidades e solicitar esclarecimentos
+
+```python
+from src.tools.query_optimizer import QueryOptimizer
+from src.tools.query_builder import QueryContext
+
+optimizer = QueryOptimizer()
+context = QueryContext(user_query="HC art 312 STF")
+canonical = optimizer.optimize_query(context)
+
+# canonical.optimized_text = "habeas corpus artigo 312 Código Processo Penal STF"
+# canonical.filters = {"court": "STF", "article": "312"}
+# canonical.requires_clarification = False
+```
+
+### 3. Memória Conversacional
+
+Gerenciamento automático de histórico de conversas por sessão:
+
+```python
+from src.api.conversation_manager import get_conversation_manager
+
+manager = get_conversation_manager()
+
+# Adicionar troca
+manager.add_exchange(
+    session_id="session123",
+    user_message="O que é prisão preventiva?",
+    assistant_message="É uma medida cautelar prevista no art. 312 do CPP..."
+)
+
+# Recuperar histórico
+history = manager.get_history("session123", as_messages=True)
+```
+
+### 4. Document Loaders
+
+Utilitários para carregar documentos de scrapers:
+
+```python
+from src.loaders import load_stf_jurisprudence, load_legal_directory
+
+# Carregar arquivo específico
+docs = load_stf_jurisprudence("data/stf_decisions.jsonl")
+
+# Carregar diretório inteiro
+all_docs = load_legal_directory("data/indexes/faiss", pattern="*.jsonl")
+```
+
 ## 📚 API Reference
 
 ### POST /search
@@ -823,10 +952,86 @@ Busca documentos por similaridade semântica.
 }
 ```
 
+### POST /rag/chat (Novo! 🆕)
+
+**RAG completo com LangChain** - Retorna resposta gerada por LLM usando documentos como contexto.
+
+**Request:**
+```json
+{
+  "q": "Quais são os requisitos para prisão preventiva?",
+  "k": 5,
+  "user_id": "user123",
+  "session_id": "session456",
+  "conversation_history": [
+    {"user": "O que é prisão preventiva?", "assistant": "É uma medida cautelar..."}
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "answer": "De acordo com o artigo 312 do CPP, a prisão preventiva requer...",
+  "sources": [
+    {
+      "id": "cpp_art312",
+      "title": "CPP - Artigo 312",
+      "court": "Código de Processo Penal",
+      "score": 0.95,
+      "text": "A prisão preventiva poderá ser decretada..."
+    }
+  ],
+  "query": "Quais são os requisitos para prisão preventiva?",
+  "canonical_query": "requisitos prisão preventiva Código de Processo Penal artigo 312",
+  "requires_clarification": false,
+  "telemetry": {
+    "total_latency_ms": 1245.3,
+    "retrieval_latency_ms": 89.2,
+    "llm_latency_ms": 1156.1,
+    "documents_retrieved": 5,
+    "model_used": "gpt-4o-mini"
+  }
+}
+```
+
+### GET /rag/sessions (Novo! 🆕)
+
+Lista sessões de conversa ativas.
+
+**Response:**
+```json
+{
+  "sessions": [
+    {
+      "session_id": "session456",
+      "user_id": "user123",
+      "created_at": "2024-01-15T10:30:00",
+      "last_activity": "2024-01-15T10:45:00",
+      "message_count": 5
+    }
+  ],
+  "total": 1
+}
+```
+
+### GET /rag/sessions/{session_id} (Novo! 🆕)
+
+Obtém histórico completo de uma sessão.
+
+### DELETE /rag/sessions/{session_id} (Novo! 🆕)
+
+Remove uma sessão de conversa.
+
+### GET /rag/stats (Novo! 🆕)
+
+Estatísticas dos componentes RAG (query optimizer, LLM, conversation manager).
+
 ### Endpoints Auxiliares
 
 - `GET /` - Informações da API
 - `GET /health` - Health check
+- `GET /metrics` - Métricas de telemetria
 - `GET /docs` - Documentação Swagger
 
 ## � Gerenciamento de Dependências com Poetry
