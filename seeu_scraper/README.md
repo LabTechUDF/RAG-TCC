@@ -7,11 +7,14 @@ O **SEEU Scraper** é um coletor de dados desenvolvido com **Scrapy**, projetado
 ## 🚀 Como Funciona
 
 ### **Fluxo de Execução**
+
 1. **Inicialização do Spider**:
+
    - O spider principal (`seeu_docs`) é iniciado a partir da URL base: `https://docs.seeu.pje.jus.br/docs/category/guias-de-uso-para-o-seeu/`.
    - Ele segue os links internos para explorar as páginas relacionadas.
 
 2. **Extração de Dados**:
+
    - Para cada página visitada, o spider coleta os seguintes campos:
      - **cluster_name**: Nome do cluster ao qual o documento pertence.
      - **title**: Título da página ou documento.
@@ -19,6 +22,7 @@ O **SEEU Scraper** é um coletor de dados desenvolvido com **Scrapy**, projetado
      - **url**: URL da página de origem.
 
 3. **Armazenamento**:
+
    - Os dados extraídos são salvos no arquivo `data/seeu_docs.json` no formato JSON.
    - O arquivo é sobrescrito a cada execução para garantir que os dados estejam atualizados.
 
@@ -47,16 +51,20 @@ seeu_scraper/
 ## 📋 Como Executar
 
 ### **Pré-requisitos**
+
 - Python 3.12+
 - Dependências listadas no arquivo `requirements.txt`
 
 ### **Passos**
+
 1. **Instale as dependências**:
+
    ```bash
    pip install -r requirements.txt
    ```
 
 2. **Execute o spider**:
+
    ```bash
    scrapy crawl seeu_docs
    ```
@@ -100,6 +108,7 @@ Os dados extraídos são organizados no seguinte formato:
 ## 🛠️ Personalização
 
 Para modificar o comportamento do scraper, edite os seguintes arquivos:
+
 - **`seeu_scraper/spiders/seeu_docs.py`**: Para alterar a lógica de extração de dados.
 - **`seeu_scraper/settings.py`**: Para ajustar configurações como delays, headers, e middlewares.
 
@@ -108,4 +117,5 @@ Para modificar o comportamento do scraper, edite os seguintes arquivos:
 ## 📞 Suporte
 
 Para dúvidas ou problemas, entre em contato com o desenvolvedor ou consulte a documentação oficial do Scrapy:
+
 - [Documentação do Scrapy](https://docs.scrapy.org/)
