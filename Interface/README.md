@@ -131,4 +131,43 @@ The AI Gateway automatically handles authentication with all supported AI provid
 ## Renovate integration
 
 Install [Renovate GitHub app](https://github.com/apps/renovate/installations/select_target) on your repository and you are good to go.
+
+## Logging System
+
+Este projeto inclui um sistema de logs estruturado para facilitar o debug e monitoramento.
+
+### Características
+
+- **Logs no console**: Todos os logs aparecem no console do navegador (client) e terminal (server)
+- **Arquivo de log**: Logs do servidor são salvos em `application.log` na raiz do projeto
+- **Múltiplos níveis**: DEBUG, INFO, WARN, ERROR
+- **Contexto rico**: Cada log inclui timestamp, contexto e dados adicionais
+
+### Uso rápido
+
+**No servidor (API):**
+```typescript
+import { logger } from '../../utils/logger'
+
+logger.info('Processing request', 'API Endpoint', { userId: 123 })
+logger.error('Operation failed', 'API Endpoint', { userId: 123 }, error)
+```
+
+**No cliente (Vue):**
+```typescript
+const logger = useClientLogger()
+
+logger.info('Component mounted', 'MyComponent')
+logger.error('Failed to fetch', 'MyComponent', { url: apiUrl }, error)
+```
+
+### Monitoramento
+
+Para visualizar os logs em tempo real:
+```bash
+tail -f application.log
+```
+
+Para mais detalhes, consulte [LOGGING.md](./LOGGING.md).
+
 >>>>>>> 0c89208 (init)
