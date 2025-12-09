@@ -24,7 +24,7 @@ defineShortcuts({
       :min-size="12"
       collapsible
       resizable
-      class="bg-elevated/50 hidden lg:flex"
+      class="bg-elevated/50 !hidden"
     >
       <template #header="{ collapsed }">
         <NuxtLink to="/" class="flex items-end gap-0.5">

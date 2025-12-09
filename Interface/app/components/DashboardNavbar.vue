@@ -11,20 +11,11 @@ const showProfile = ref(false)
     <template #right>
       <UColorModeButton />
 
-      <UButton
-        color="neutral"
-        variant="ghost"
-        icon="i-lucide-plus"
-        to="/"
-        class="lg:hidden"
-      />
-
-      <!-- Account avatar for mobile -->
+      <!-- Account button for all screen sizes -->
       <UButton
         v-if="user"
         color="neutral"
         variant="ghost"
-        class="lg:hidden"
         @click="showProfile = true"
       >
         <UAvatar
