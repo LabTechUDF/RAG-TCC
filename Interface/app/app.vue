@@ -1,7 +1,15 @@
 <script setup lang="ts">
+const logger = useClientLogger()
 const colorMode = useColorMode()
 
+logger.info('Application started', 'App')
+
 const color = computed(() => colorMode.value === 'dark' ? '#1b1718' : 'white')
+
+// Log color mode changes
+watch(() => colorMode.value, (newMode) => {
+  logger.debug('Color mode changed', 'App', { mode: newMode })
+})
 
 useHead({
   meta: [
@@ -28,6 +36,12 @@ useSeoMeta({
   ogImage: 'https://ui.nuxt.com/assets/templates/nuxt/chat-light.png',
   twitterImage: 'https://ui.nuxt.com/assets/templates/nuxt/chat-light.png',
   twitterCard: 'summary_large_image'
+})
+
+// Log navigation changes
+const router = useRouter()
+router.afterEach((to, from) => {
+  logger.info('Navigation', 'App', { from: from.path, to: to.path })
 })
 </script>
 

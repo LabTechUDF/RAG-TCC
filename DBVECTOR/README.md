@@ -1,16 +1,62 @@
-# 🏛️ RAG Jurídico
+# 🏛️ RAG Jurídico - Sistema SEEU
 
-Sistema de **Retrieval-Augmented Generation (RAG)** para documentos jurídicos com busca vetorial, desenvolvido para começar com **FAISS** local e migrar facilmente para **OpenSearch** distribuído.
+Sistema de **Retrieval-Augmented Generation (RAG)** especializado em **execução penal** e integrado ao **Sistema Eletrônico de Execução Unificado (SEEU)**.
 
-## 🎯 Visão Geral
+---
+
+## ✨ **NOVO: Sistema RAG SEEU Completo** (Dezembro 2024)
+
+🎉 **Implementação completa do fluxo RAG jurídico com:**
+
+- ✅ **Normalização Jurídica** - Query rewriting com LLM para extrair dados de execução penal
+- ✅ **Chunking Inteligente** - Documentos quebrados em 400-800 tokens com overlap
+- ✅ **Relevância Relativa** - Cálculo via softmax (não probabilidade bruta)
+- ✅ **Resposta Estruturada SEEU** - JSON padronizado com teses, aplicação e jurisprudências
+- ✅ **API REST Completa** - Endpoint `/api/rag/query` pronto para uso
+
+### 📚 Documentação RAG SEEU
+
+| Documento | Descrição |
+|-----------|-----------|
+| **[RAG_SEEU_README.md](RAG_SEEU_README.md)** | 📖 Documentação completa do sistema RAG |
+| **[GUIA_INTEGRACAO_RAG.md](GUIA_INTEGRACAO_RAG.md)** | 🚀 Guia rápido de integração (5 min) |
+| **[SUMARIO_IMPLEMENTACAO_RAG.md](SUMARIO_IMPLEMENTACAO_RAG.md)** | 📊 Sumário executivo da implementação |
+| **[ESTRUTURA_RAG_COMPLETA.md](ESTRUTURA_RAG_COMPLETA.md)** | 📦 Estrutura de arquivos e fluxo completo |
+| **[CHECKLIST_VALIDACAO_RAG.md](CHECKLIST_VALIDACAO_RAG.md)** | ✅ Checklist de validação passo a passo |
+
+### 🚀 Quick Start RAG SEEU
+
+```bash
+# 1. Configure chaves LLM
+cp .env.example .env
+nano .env  # Adicione OPENAI_API_KEY ou ANTHROPIC_API_KEY
+
+# 2. Instale dependências
+pip install -r requirements.txt
+
+# 3. Teste implementação
+python test_rag_implementation.py
+
+# 4. Inicie API
+python -m uvicorn src.api.main:app --reload --port 8000
+
+# 5. Teste endpoint
+python exemplo_client_rag.py
+```
+
+**👉 Comece por**: [GUIA_INTEGRACAO_RAG.md](GUIA_INTEGRACAO_RAG.md)
+
+---
+
+## 🎯 Visão Geral (Core)
 
 Este projeto oferece uma infraestrutura completa de RAG jurídico com:
 
 - **Busca vetorial** com embeddings semânticos (sentence-transformers)
 - **Dois backends intercambiáveis**: FAISS (local) e OpenSearch (distribuído)
 - **API REST** com FastAPI para integração
+- **Sistema RAG SEEU** completo para execução penal
 - **Testes abrangentes** com pytest (unitários e integração)
-- **Dados dummy** para validação imediata
 - **Pipeline pronto** para plugar JSONs reais
 
 ## 🏗️ Arquitetura
@@ -19,9 +65,15 @@ Este projeto oferece uma infraestrutura completa de RAG jurídico com:
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   API FastAPI   │    │   Embeddings     │    │  Vector Store   │
 │  /search        │◄──►│ sentence-transf. │◄──►│ FAISS/OpenSrch │
-│  /health        │    │ all-MiniLM-L6-v2 │    │ cosine similarity│
-│  /docs          │    │ dim=384          │    │ k-NN search     │
+│  /api/rag/query │    │ all-MiniLM-L6-v2 │    │ cosine similarity│
+│  /health        │    │ dim=384          │    │ k-NN search     │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
+        │
+        ▼
+┌──────────────────────────────────────────────────────────────┐
+│              RAG SEEU Orquestrador                           │
+│  1. Normalização → 2. Busca → 3. Relevância → 4. LLM        │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ## 📋 Pré-requisitos

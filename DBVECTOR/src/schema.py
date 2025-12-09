@@ -24,8 +24,57 @@ class Doc:
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Doc":
-        """Cria Doc a partir de dicionário."""
-        return cls(**data)
+        """Cria Doc a partir de dicionário, ignorando campos desconhecidos e mapeando variações."""
+        # Mapeamento de campos alternativos
+        mapped_data = {}
+        
+        # Mapeia 'id' (obrigatório) - usa case_number, raw_seq_documento ou hash como fallback
+        if 'id' in data:
+            mapped_data['id'] = data['id']
+        elif 'case_number' in data and data['case_number']:
+            # Prioridade 1: usa case_number como ID (documentos STJ/STF)
+            mapped_data['id'] = str(data['case_number'])
+        elif 'raw_seq_documento' in data and data['raw_seq_documento']:
+            # Prioridade 2: usa raw_seq_documento (documentos STJ)
+            mapped_data['id'] = str(data['raw_seq_documento'])
+        else:
+            # Fallback: gera ID baseado no título + url ou hash do conteúdo
+            import hashlib
+            id_source = data.get('url', '') or data.get('title', '') or data.get('content', '')
+            mapped_data['id'] = hashlib.md5(id_source.encode()).hexdigest()[:16]
+        
+        # Mapeia 'text' (obrigatório) - pode vir como 'content'
+        if 'text' in data:
+            mapped_data['text'] = data['text']
+        elif 'content' in data:
+            mapped_data['text'] = data['content']
+        else:
+            mapped_data['text'] = ""  # Fallback vazio
+        
+        # Campos opcionais diretos
+        if 'title' in data:
+            mapped_data['title'] = data['title']
+        if 'court' in data:
+            mapped_data['court'] = data['court']
+        if 'code' in data:
+            mapped_data['code'] = data['code']
+        if 'article' in data:
+            mapped_data['article'] = data['article']
+        if 'date' in data:
+            mapped_data['date'] = data['date']
+        
+        # Campos extras vão para meta
+        known_fields = {'id', 'text', 'content', 'title', 'court', 'code', 'article', 'date', 'meta'}
+        extra_fields = {k: v for k, v in data.items() if k not in known_fields}
+        
+        if extra_fields or 'meta' in data:
+            mapped_data['meta'] = data.get('meta', {})
+            if isinstance(mapped_data['meta'], dict):
+                mapped_data['meta'].update(extra_fields)
+            else:
+                mapped_data['meta'] = extra_fields
+        
+        return cls(**mapped_data)
 
 
 @dataclass 

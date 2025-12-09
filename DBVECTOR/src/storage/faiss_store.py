@@ -130,7 +130,11 @@ class FAISSStore(VectorStore):
         if not docs:
             return
             
-        print(f"🔄 Indexando {len(docs)} documentos no FAISS...")
+        # Suprime mensagem repetitiva se muitos documentos
+        if len(docs) > 100:
+            log.info(f"Indexando {len(docs)} documentos no FAISS...")
+        else:
+            print(f"🔄 Indexando {len(docs)} documentos no FAISS...")
         
         # Gera embeddings
         texts = [doc.text for doc in docs]
@@ -167,12 +171,15 @@ class FAISSStore(VectorStore):
                 'meta': doc.meta
             }
         
-        # Adiciona ao índice
+        # Adiciona ao índice (em memória, sem salvar no disco)
         self._index.add_with_ids(vectors, np.array(internal_ids, dtype=np.int64))
-
-        # Salva no disco
+        
+        if len(docs) <= 100:
+            print(f"✅ {len(docs)} documentos adicionados ao índice (não salvo ainda)")
+    
+    def save(self) -> None:
+        """Salva índice e metadados no disco explicitamente."""
         self._save_index()
-        print(f"✅ {len(docs)} documentos indexados com sucesso!")
     
     def search(self, query_vector: np.ndarray, k: int = 5) -> List[SearchResult]:
         """Busca documentos similares."""
