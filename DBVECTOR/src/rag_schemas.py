@@ -46,12 +46,19 @@ class MetadadosConsulta(BaseModel):
     )
 
 
+class HistoryMessage(BaseModel):
+    """Mensagem do histórico de conversa."""
+    role: str = Field(..., description="Role da mensagem: 'user' ou 'assistant'")
+    content: str = Field(..., description="Conteúdo da mensagem")
+
+
 class RagQueryRequest(BaseModel):
     """Request para o endpoint /api/rag/query."""
     promptUsuario: str = Field(..., min_length=1, description="Pergunta do usuário")
     useRag: bool = Field(True, description="Se deve usar RAG ou resposta direta")
     metadados: Optional[MetadadosConsulta] = Field(default_factory=MetadadosConsulta)
     k: int = Field(10, ge=1, le=50, description="Número de chunks a recuperar")
+    history: List[HistoryMessage] = Field(default_factory=list, description="Histórico de conversa")
 
 
 # ========================================
