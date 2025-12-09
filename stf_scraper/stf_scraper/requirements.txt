@@ -1,0 +1,37 @@
+# Core Scrapy dependencies
+scrapy>=2.11.0
+scrapy-playwright>=0.0.40
+
+# Playwright for browser automation
+playwright>=1.40.0
+
+# HTML parsing and web utilities  
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+w3lib>=2.1.0
+
+# HTTP handling
+requests>=2.31.0
+urllib3>=2.0.0
+
+# Data processing
+itemloaders>=1.1.0
+itemadapter>=0.8.0
+
+# Async support
+twisted>=22.10.0
+asyncio
+
+# Date and time handling
+python-dateutil>=2.8.0
+
+# Logging and monitoring
+structlog>=23.1.0
+
+# Development and testing tools
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+
+# Optional: For advanced text processing
+nltk>=3.8.0
+spacy>=3.6.0 

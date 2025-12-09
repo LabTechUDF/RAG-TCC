@@ -1,0 +1,37 @@
+flowchart TD
+  %% Áreas
+  subgraph WC[Web Chat]
+    U[Usuário envia prompt]
+  end
+
+  subgraph API[Nossa API]
+    A1[Obter metadados de clusterização/indexação]
+    A2{Prompt suficiente<br/>para gerar query?}
+    A3[Solicitar ao GPT-5: gerar melhor string de busca]
+    A4[Refinar perguntas para o usuário]
+    A5[Buscar no banco vetorial com a string]
+    A6[Montar contexto: histórico + prompt + resultados]
+    A7[Enviar ao GPT-5 para resposta final]
+    A8[Retornar resposta ao usuário]
+  end
+
+  subgraph OAI[OpenAI]
+    G1[GPT-5: analisar prompt + clusters<br/>e gerar string de busca]
+    G2[GPT-5: redigir resposta final]
+  end
+
+  subgraph VDB[Infra de Dados]
+    C1[Serviço de Clusters/Indexação]
+    V1[(Banco Vetorial)]
+  end
+
+  %% Fluxo
+  U --> A1 --> C1
+  C1 --> A2
+
+  A2 -- "Não" --> A4 --> U
+  U --> A3
+
+  A2 -- "Sim" --> A3
+  A3 --> G1 --> A5
+  A5 --> V1 --> A6 --> A7 --> G2 --> A8 --> U

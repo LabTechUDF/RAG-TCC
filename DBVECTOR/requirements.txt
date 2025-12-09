@@ -1,0 +1,17 @@
+faiss-cpu>=1.7.4
+opensearch-py>=2.3.0
+sentence-transformers>=2.2.2
+numpy>=1.24.0
+pandas>=2.0.0
+pyarrow>=12.0.0
+fastapi>=0.100.0
+uvicorn[standard]>=0.22.0
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+# LLM providers para RAG
+openai>=1.0.0
+anthropic>=0.18.0
+# Tokenização para chunking
+tiktoken>=0.5.0
+# Geração de PDFs
+reportlab>=4.0.0

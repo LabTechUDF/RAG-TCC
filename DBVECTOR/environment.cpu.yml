@@ -1,0 +1,35 @@
+name: rag-juridico-cpu
+channels:
+  - pytorch
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  # Web/API
+  - fastapi
+  - uvicorn
+  - pydantic>=2
+  - httpx
+  # Data
+  - pandas
+  - pyarrow
+  - numpy
+  # Testing/bench
+  - pytest
+  - pytest-benchmark
+  # Observabilidade
+  - prometheus_client
+  # Vetores (CPU)
+  - faiss-cpu
+  # PyTorch CPU
+  - pytorch
+  - torchvision
+  - torchaudio
+  - cpuonly
+  # OpenSearch client
+  - opensearch-py
+  # CLI nice-to-have
+  - rich
+  - pip:
+      - sentence-transformers
+      - python-dotenv

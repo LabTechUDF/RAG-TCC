@@ -1,0 +1,34 @@
+flowchart TD
+  subgraph Client["Web Chat / Frontend"]
+    C1["Browser do Usuario"]
+  end
+
+  subgraph Backend["Nossa API / Backend"]
+    S1["Gateway / Orquestrador"]
+    S2["Conector Clusters e Indexacao"]
+    S3["Conector Banco Vetorial"]
+    S4["Conector OpenAI"]
+  end
+
+  subgraph Data["Infra de Dados"]
+    CL["Servico de Clusters e Indexacao"]
+    VDB[("Banco Vetorial")]
+  end
+
+  subgraph OpenAI["OpenAI"]
+    GPT["GPT-5"]
+  end
+
+  %% Conexoes principais
+  C1 -->|HTTP ou WebSocket| S1
+  S1 --> S2
+  S2 --> CL
+  S1 --> S3
+  S3 --> VDB
+  S1 --> S4
+  S4 --> GPT
+
+  %% Observacoes
+  %% - Apenas a API acessa o banco vetorial
+  %% - GPT gera query e resposta final
+  %% - Web Chat coleta e exibe

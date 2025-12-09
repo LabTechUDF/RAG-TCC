@@ -1,0 +1,102 @@
+[
+  {
+    "qid": "q1",
+    "pergunta": "Quais são os direitos fundamentais garantidos pela Constituição?",
+    "doc_ids_relevantes": ["cf88_art5"]
+  },
+  {
+    "qid": "q2",
+    "pergunta": "Como funciona o habeas corpus no Brasil?",
+    "doc_ids_relevantes": ["stf_hc_123456"]
+  },
+  {
+    "qid": "q3",
+    "pergunta": "O que é prescrição no direito civil?",
+    "doc_ids_relevantes": ["cc_art197", "cc_art178"]
+  },
+  {
+    "qid": "q4",
+    "pergunta": "Quais são as garantias do consumidor?",
+    "doc_ids_relevantes": ["stj_resp_987654"]
+  },
+  {
+    "qid": "q5",
+    "pergunta": "Artigo 5 da Constituição Federal sobre igualdade",
+    "doc_ids_relevantes": ["cf88_art5"]
+  },
+  {
+    "qid": "q6",
+    "pergunta": "Prisão preventiva e direito à liberdade",
+    "doc_ids_relevantes": ["stf_hc_123456", "cf88_art5"]
+  },
+  {
+    "qid": "q7",
+    "pergunta": "Diferença entre prescrição e decadência",
+    "doc_ids_relevantes": ["cc_art197", "cc_art178"]
+  },
+  {
+    "qid": "q8",
+    "pergunta": "Responsabilidade civil do fornecedor",
+    "doc_ids_relevantes": ["stj_resp_987654"]
+  },
+  {
+    "qid": "q9",
+    "pergunta": "Direito à vida, liberdade e segurança",
+    "doc_ids_relevantes": ["cf88_art5"]
+  },
+  {
+    "qid": "q10",
+    "pergunta": "Prescrição entre cônjuges",
+    "doc_ids_relevantes": ["cc_art197"]
+  },
+  {
+    "qid": "q11",
+    "pergunta": "Anulação de negócio jurídico por coação",
+    "doc_ids_relevantes": ["cc_art178"]
+  },
+  {
+    "qid": "q12",
+    "pergunta": "Defeito na prestação de serviço ao consumidor",
+    "doc_ids_relevantes": ["stj_resp_987654"]
+  },
+  {
+    "qid": "q13",
+    "pergunta": "Liberdade de locomoção e habeas corpus",
+    "doc_ids_relevantes": ["stf_hc_123456"]
+  },
+  {
+    "qid": "q14",
+    "pergunta": "Cláusulas pétreas da Constituição",
+    "doc_ids_relevantes": ["cf88_art5"]
+  },
+  {
+    "qid": "q15",
+    "pergunta": "Igualdade perante a lei",
+    "doc_ids_relevantes": ["cf88_art5"]
+  },
+  {
+    "qid": "q16",
+    "pergunta": "Prazo de decadência no direito civil",
+    "doc_ids_relevantes": ["cc_art178"]
+  },
+  {
+    "qid": "q17",
+    "pergunta": "Responsabilidade objetiva do fornecedor",
+    "doc_ids_relevantes": ["stj_resp_987654"]
+  },
+  {
+    "qid": "q18",
+    "pergunta": "Fundamentação legal da prisão preventiva",
+    "doc_ids_relevantes": ["stf_hc_123456"]
+  },
+  {
+    "qid": "q19",
+    "pergunta": "Prazo prescricional no Código Civil",
+    "doc_ids_relevantes": ["cc_art197", "cc_art178"]
+  },
+  {
+    "qid": "q20",
+    "pergunta": "Danos materiais e morais do consumidor",
+    "doc_ids_relevantes": ["stj_resp_987654"]
+  }
+]

@@ -1,0 +1,25 @@
+{
+  "name": "interface",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Nuxt frontend for RAG-TCC",
+  "scripts": {
+    "dev": "npx nuxi dev",
+    "build": "npx nuxi build",
+    "preview": "npx nuxi preview"
+  },
+  "dependencies": {
+    "@ai-sdk/vue": "^2.0.106",
+    "@nuxt/ui": "^4.1.0",
+    "@vueuse/core": "^14.1.0",
+    "ai": "^5.0.106",
+    "date-fns": "^4.1.0",
+    "marked": "^17.0.1"
+  },
+  "devDependencies": {
+    "@iconify-json/lucide": "^1.2.72",
+    "@iconify-json/simple-icons": "^1.2.57",
+    "@types/node": "^24.10.1",
+    "nuxt": "^4.2.0"
+  }
+}

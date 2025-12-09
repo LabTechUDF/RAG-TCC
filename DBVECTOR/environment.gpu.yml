@@ -1,0 +1,36 @@
+name: rag-juridico
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  # Web/API
+  - fastapi
+  - uvicorn
+  - pydantic>=2
+  - httpx
+  # Data
+  - pandas
+  - pyarrow
+  - numpy
+  # Testing/bench
+  - pytest
+  - pytest-benchmark
+  # Observabilidade
+  - prometheus_client
+  # Vetores (GPU)
+  - faiss-gpu
+  # PyTorch + CUDA 12.1
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=12.1
+  # OpenSearch client
+  - opensearch-py
+  # CLI nice-to-have
+  - rich
+  - pip:
+      - sentence-transformers
+      - python-dotenv

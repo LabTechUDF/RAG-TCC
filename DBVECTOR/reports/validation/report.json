@@ -1,0 +1,9 @@
+{
+  "total": 41028,
+  "missing_fields_pct": 0.0,
+  "too_short_pct": 0.3,
+  "bad_tokens_pct": 0.0,
+  "dupe_ids": 74,
+  "bad_overall_pct": 0.66,
+  "ok_to_proceed": true
+}
