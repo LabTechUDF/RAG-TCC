@@ -1,6 +1,12 @@
 <script setup lang="ts">
 const logger = useClientLogger()
 const colorMode = useColorMode()
+const { initAuth } = useAuth()
+
+// Initialize auth on app mount
+onMounted(() => {
+  initAuth()
+})
 
 logger.info('Application started', 'App')
 
@@ -52,5 +58,7 @@ router.afterEach((to, from) => {
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
+
+    <AuthModal />
   </AppWrapper>
 </template>

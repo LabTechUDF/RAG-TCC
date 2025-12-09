@@ -1,7 +1,9 @@
 <script setup lang="ts">
 const { loggedIn } = useUserSession()
+const { user } = useAuth()
 
 const open = ref(false)
+const showProfile = ref(false)
 
 watch(loggedIn, () => {
   open.value = false
@@ -22,8 +24,7 @@ defineShortcuts({
       :min-size="12"
       collapsible
       resizable
-      class="bg-elevated/50"
-      style="display: none;"
+      class="bg-elevated/50 hidden lg:flex"
     >
       <template #header="{ collapsed }">
         <NuxtLink to="/" class="flex items-end gap-0.5">
@@ -49,6 +50,31 @@ defineShortcuts({
       </template>
 
       <template #footer="{ collapsed }">
+        <UButton
+          v-if="user && !collapsed"
+          block
+          color="neutral"
+          variant="ghost"
+          class="p-2"
+          @click="showProfile = true"
+        >
+          <UUser
+            :name="user.name"
+            :description="user.email"
+            :avatar="{
+              src: user.profilePicture,
+              alt: user.name,
+              size: 'sm'
+            }"
+            :ui="{ 
+              root: 'gap-2', 
+              wrapper: 'min-w-0',
+              name: 'truncate text-sm font-medium',
+              description: 'truncate text-xs'
+            }"
+          />
+        </UButton>
+        
         <div v-if="!collapsed" class="text-xs text-muted p-2 text-center">
           RAG-TCC © 2024
         </div>
@@ -56,5 +82,7 @@ defineShortcuts({
     </UDashboardSidebar>
 
     <slot />
+    
+    <ProfileModal v-model="showProfile" />
   </UDashboardGroup>
 </template>
