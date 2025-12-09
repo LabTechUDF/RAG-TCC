@@ -1,0 +1,60 @@
+[{
+  "cluster_name": "Documentos de suporte SEEU",
+  "title": "Guias de uso para o SEEU",
+  "content": "Este espaço apresenta guias de uso simples e objetivos sobre as novas funcionalidades do sistema SEEU, com o objetivo de facilitar a adaptação dos usuários às atualizações e aprimorar a utilização do sistema.\nGRUPO 3 - Membros do Ministério Público e assessoria, Defensoria Pública e assessoria, perfil Serviço de Alternativas, Seaps, Apoio Especializado (externos aos tribunais), DEPEN, Advogados e demais externos.\nIntrodução\n📘 Introdução",
+  "url": "https://docs.seeu.pje.jus.br/docs/category/guias-de-uso-para-o-seeu/"
+},
+{
+  "cluster_name": "Documentos de suporte SEEU",
+  "title": "Portal de Documentação do SEEU",
+  "content": "Em sintonia com as constantes melhorias do SEEU, o\ntambém evoluiu. O novo portal conta com recursos de pesquisa, usabilidade e organização de conteúdo que facilitarão o acesso e uso por parte dos usuários e usuárias.\nAlém disso, será possível acompanhar as atualizações recentes do SEEU diretamente no Portal, por meio da aba de \"\n\".\n⚠️ Informamos que o antigo Portal de documentação do Sistema Único de Execução Eletrônica (SEEU) foi desativado em\n. Destacamos que o novo Portal de documentação do SEEU - DocsSEEU, no endereço\n, foi disponibilizado e os documentos transferidos da plataforma antiga desde\n. E ainda, novos manuais foram acrescentados a partir das novas funcionalidades do SEEU.\nO\né a ferramenta que centraliza e uniformiza a gestão de processos de execução penal em todo o país. O sistema foi adotado como política nacional pelo\nem 2016 e é regido pela\ne pela\n, a qual revogou parcialmente a normativa anterior, a fim de estabelecer a\ne a\ndo\n, sob a governança de Comitê Gestor especializado.\nO Sistema permite o trâmite processual mais eficiente e proporciona a gestão confiável dos dados da população carcerária do Brasil. Atualmente possui mais de\nem tramitação, além de estar implantado em\n, dentre Tribunais de Justiça\n.\nA partir de 2019, a melhoria e expansão do SEEU tornou-se parte das ações do\n, parceria inédita entre o Conselho Nacional de Justiça e o Programa das Nações Unidas para o Desenvolvimento, com apoio do Ministério da Justiça e Segurança Pública.\nPara conhecer mais sobre o Sistema, clique\n.",
+  "url": "https://docs.seeu.pje.jus.br/docs/intro/"
+},
+{
+  "cluster_name": "Documentos de suporte SEEU",
+  "title": "Manuais de Ações no Sistema",
+  "content": "Os manuais foram elaborados e segmentados conforme as principais ações no Sistema, com objetivo de apresentar de forma específica sobre o uso e aplicação das funcionalidades do SEEU.\nIntrodução\nApresentação\nIntrodução\nIntrodução\nIntrodução\nApresentação\nIntrodução\nIntrodução\nPublicação no Diário de Justiça Eletrônico\nIntrodução\nIntrodução\nIntrodução\nCancelamento de envio de IIPR\nObjetivo\nApresentação\nIntrodução\nApresentação\nIntrodução\nApresentação\nDisponível para as Instituições que pactuaram a expedição dos documentos com o CNJ.\nIntrodução\nIntrodução\nApresentação\nIntrodução\nIntrodução\nIntrodução\nIntrodução",
+  "url": "https://docs.seeu.pje.jus.br/docs/category/manuais-de-a%C3%A7%C3%B5es-no-sistema/"
+},
+{
+  "cluster_name": "Documentos de suporte SEEU",
+  "title": "Manuais por Perfil",
+  "content": "Os manuais foram desenvolvidos e segmentados conforme os principais perfis de usuário do Sistema, contendo as ações e funcionalidades fundamentais para uso do SEEU.\nIntrodução\nIntrodução\nManual para usuários externos.\nIntrodução",
+  "url": "https://docs.seeu.pje.jus.br/docs/category/manuais-por-perfil/"
+},
+{
+  "cluster_name": "Documentos de suporte SEEU",
+  "title": "Treinamentos e Tutoriais",
+  "content": "Os treinamentos e tutoriais em vídeo foram desenvolvidas para capacitação dos usuários em ações específicas no Sistema, para melhor entendimento e uso das funcionalidades (novas ou padrão) do SEEU.\nNesta página estão reunidos os vídeos das capacitações e treinamentos relativos ao uso do SEEU - Sistema Eletrônico de Execução Unificado.\nOs vídeos contidos nesse documento tratam das seguintes ações dentro do SEEU:\nOs vídeos contidos nesse documento tratam das seguintes ações dentro do SEEU:",
+  "url": "https://docs.seeu.pje.jus.br/docs/category/treinamentos-e-tutoriais/"
+},
+{
+  "cluster_name": "Documentos de suporte SEEU",
+  "title": "Documentação Técnica",
+  "content": "Os manuais técnicos foram elaborados para descrição e apresentação das principais ações técnicas no Sistema, geralmente utilizadas pelas equipes de tecnologia dos Tribunais e por usuários com um número maior de funções no SEEU.\nIntrodução\nIntrodução\nIntrodução\nIntrodução\nDeverá ser solicitado o usuário e o código interno do webservice para o administrador nacional do SEEU. A senha é dinâmica e muda diariamente, sendo gerada a partir de um código interno, que deve ser mantido sob sigilo. O código interno deverá ser incluído como parâmetro no código abaixo, que gera a senha dinâmica. Sendo assim, ele deve estar na chamada do webservice.\nIntrodução\nIntrodução\nIntrodução\nIntrodução\nIntrodução\nIntrodução\nIntrodução\nIntrodução\nIntrodução\nIntrodução\nIntrodução\nTabelas de Parâmetros\nIntrodução\n- Acesse AQUI.\nIntrodução",
+  "url": "https://docs.seeu.pje.jus.br/docs/category/documenta%C3%A7%C3%A3o-t%C3%A9cnica/"
+},
+{
+  "cluster_name": "Documentos de suporte SEEU",
+  "title": "Documentos de Referência",
+  "content": "A documentação de referência disponível abaixo tem como objetivo complementar o entendimento de funcionamento e uso do SEEU.\n|sigla_resumida      | descricao | numero_lei |ano_lei |numero_artigo |paragrafo_numero |alinea_descricao |tempominimo |tempomaximo|\n- Acesse AQUI.\n- Acesse AQUI.\nTipos de Prisão",
+  "url": "https://docs.seeu.pje.jus.br/docs/category/documentos-de-refer%C3%AAncia/"
+},
+{
+  "cluster_name": "Documentos de suporte SEEU",
+  "title": "FAQ’s",
+  "content": "As FAQ’s (*Frequently Asked Questions*, em inglês) são documentos que contém a relação de Perguntas Frequentes dos usuários, e tem como objetivo apresentar soluções rápidas às dúvidas recorrentes sobre o uso e aplicação das funcionalidades do Sistema.\nIntrodução",
+  "url": "https://docs.seeu.pje.jus.br/docs/category/faqs/"
+},
+{
+  "cluster_name": "Documentos de suporte SEEU",
+  "title": "📝 Guia de Uso para Validação do Indulto 2024",
+  "content": "Este guia tem como objetivo orientar os servidores quanto à correta aplicação das regras estabelecidas pelo\n, que trata da concessão de\ne\nno âmbito do sistema penitenciário nacional.\nA utilização correta da funcionalidade no sistema\né fundamental para garantir segurança jurídica, celeridade e uniformidade na análise dos processos.\nO acesso à funcionalidade\ndeve ser feito diretamente na interface do sistema\n, conforme o caminho abaixo:\n→\n→\nApós acessar, o usuário poderá aplicar\nconforme os critérios definidos no decreto.\nA tela de\napresenta diversas opções de configuração conforme os incisos do decreto.\n🖥️\nA interface exibirá os critérios correspondentes ao inciso selecionado, permitindo ajustes antes da execução da consulta.\nApós a execução da pesquisa, o sistema apresentará a lista de\nconforme as regras do decreto.\nAs informações exibidas incluem:\n⚠️\n:\n✅\n(\n):\n(\n):\nPara facilitar a análise e validação dos alertas no SEEU, é essencial compreender a correspondência entre os\nexibidos pelo sistema e os\n(Indulto 2024).",
+  "url": "https://docs.seeu.pje.jus.br/docs/guia-de-uso/guia-validacao-indulto/"
+},
+{
+  "cluster_name": "Documentos de suporte SEEU",
+  "title": "Recursos Operacionais",
+  "content": "Os documentos operacionais contém as informações de requisitos mínimos para acesso ao SEEU, assim como procedimentos operacionais para uso do Sistema.\nIntrodução",
+  "url": "https://docs.seeu.pje.jus.br/docs/category/recursos-operacionais/"
+}]

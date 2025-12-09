@@ -6,6 +6,9 @@ import re
 import json
 import scrapy
 import os
+import threading
+import queue
+import time
 from datetime import datetime
 from pathlib import Path
 from scrapy.exceptions import CloseSpider
@@ -18,11 +21,8 @@ from stf_scraper.items import (
     extract_decision_date_from_content,
     extract_partes_from_content
 )
+from pdb import set_trace
 
-from scrapy.utils.project import get_project_settings
-from stf_scraper.utils.shared_state import (
-    get_and_increment_page, mark_done, read_state, write_state
-)
 
 
 class StfJurisprudenciaSpider(scrapy.Spider):
@@ -105,240 +105,135 @@ class StfJurisprudenciaSpider(scrapy.Spider):
         'ROBOTSTXT_OBEY': False,
     }
 
+    def load_pool_data(self, pool_file_path):
+        """Load pool data and generate query array and start URLs"""
+        try:
+            with open(pool_file_path, 'r', encoding='utf-8') as f:
+                pool_data = json.load(f)
+            
+            article = pool_data.get('article', 'unknown')
+            query_text = pool_data.get('query', '')
+            pages = pool_data.get('pages', [])
+            
+            self.logger.info(f"🏊‍♂️ Loaded pool: Article {article}, {len(pages)} pages")
+            
+            # Create query array with pool info
+            query_array = [{
+                'artigo': article,
+                'query': query_text,
+                'url': pages[0]['url'] if pages else ''
+            }]
+            
+            # Create start URLs from all pages in pool
+            start_urls = [page['url'] for page in pages]
+            
+            self.logger.info(f"📋 Pool processing: {len(start_urls)} URLs to process")
+            
+            return query_array, start_urls
+            
+        except Exception as e:
+            self.logger.error(f"Failed to load pool file {pool_file_path}: {e}")
+            return [], []
 
-    @classmethod
-    def from_crawler(cls, crawler, *args, **kwargs):
-        spider = super().from_crawler(crawler, *args, **kwargs)
-        # Load query array from JSON file
-        spider.query_array = spider.load_query_array()
-        spider.current_query_info = None
-        # Usar apenas a primeira query para scraping compartilhado
-        if spider.query_array:
-            spider.shared_query_info = spider.query_array[0]
-            spider.base_url = spider.shared_query_info['url'].split('&page=')[0]
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Check if we're running in pool processing mode
+        pool_file = kwargs.get('pool_file') or getattr(self, 'pool_file', None)
+        discovery_mode = kwargs.get('discovery_mode', 'true').lower() == 'true'
+        
+        self.pool_mode = bool(pool_file)
+        self.pool_file_path = pool_file
+        self.discovery_mode = discovery_mode and not self.pool_mode  # Disable discovery if pool mode
+        
+        if self.pool_mode:
+            self.logger.info(f"🏊‍♂️ Running in POOL PROCESSING mode with file: {Path(pool_file).name}")
+            self.logger.info(f"🚀 Will use semaphore-based workers for page processing")
+            
+            # Load pool data and create start URLs from pool
+            self.query_array, self.start_urls = self.load_pool_data(pool_file)
+            self.current_query_info = self.query_array[0] if self.query_array else None
         else:
-            spider.shared_query_info = None
-            spider.base_url = None
-        # Diretório de estado compartilhado já criado e funções utilitárias já importadas
-        state_dir = Path(__file__).parent.parent / 'data' / 'shared_pagination'
-        state_dir.mkdir(parents=True, exist_ok=True)
-        # Parallel browser count from settings
-        spider.parallel_browser_count = crawler.settings.getint('PARALLEL_BROWSER_COUNT', 3)
-        # Dev mode
-        spider.dev_mode = (
+            # Normal mode - load query array from JSON file
+            self.query_array = self.load_query_array()
+            self.current_query_info = None
+            
+            # Generate start_urls from query array
+            self.start_urls = [item['url'] for item in self.query_array]
+        
+        # Add pagination tracking with parallel page strategy
+        self.items_processed_on_current_page = 0
+        self.total_items_on_current_page = 0
+        self.current_page_number = 1
+        self.total_pages = None
+        self.base_url = None  # Store base URL without page parameter
+        
+        # Parallel page processing variables
+        self.page_groups = []  # Will store groups of pages for parallel processing
+        self.parallel_groups_count = 3  # 3 groups for safe parallel processing
+        self.pages_processed = set()  # Track which pages have been processed
+        self.initial_parallel_processing_started = False  # Track if we've started parallel processing
+        
+        # Check processing mode
+        self.discovery_mode = kwargs.get('discovery_mode', '').lower() in ['true', '1', 'yes']
+        self.worker_id = kwargs.get('worker_id', None)
+        self.group_file = kwargs.get('group_file', None)
+        
+        if self.discovery_mode:
+            self.logger.info("🔍 Running in DISCOVERY mode - will generate group files")
+        elif self.group_file:
+            self.logger.info(f"👷 Running in GROUP mode - Worker {self.worker_id} processing specific group")
+        else:
+            self.logger.info("🚀 Running in STANDARD mode")
+        
+        # Check if we're in development mode
+        # Can be set via environment variable or spider argument
+        self.dev_mode = (
             kwargs.get('dev_mode', '').lower() in ['true', '1', 'yes'] or
             os.getenv('SPIDER_DEV_MODE', '').lower() in ['true', '1', 'yes'] or
             os.getenv('ENV', '').lower() in ['dev', 'development']
         )
-        if spider.dev_mode:
-            spider.items_extracted = 0
-            spider.max_items = 5
-            spider.logger.info("🚧 Running in DEVELOPMENT mode - limited to 5 items")
-            spider.custom_settings['CLOSESPIDER_ITEMCOUNT'] = 5
+        
+        if self.dev_mode:
+            self.items_extracted = 0
+            self.max_items = 5
+            self.logger.info("🚧 Running in DEVELOPMENT mode - limited to 5 items")
+            # Set the Scrapy built-in item count limit as backup
+            self.custom_settings['CLOSESPIDER_ITEMCOUNT'] = 5
         else:
-            spider.items_extracted = 0
-            spider.max_items = None
-            spider.logger.info("🚀 Running in PRODUCTION mode - no item limit")
-            if 'CLOSESPIDER_ITEMCOUNT' in spider.custom_settings:
-                del spider.custom_settings['CLOSESPIDER_ITEMCOUNT']
-        # Inicializa atributos de paginação para evitar AttributeError
-        spider.total_pages = None
-        spider.items_processed_on_current_page = 0
-        spider.total_items_on_current_page = 0
-        spider.current_page_number = 1
-        return spider
-
-
-    def start_requests(self):
-        settings = get_project_settings()
-        parallel_count = settings.getint('PARALLEL_BROWSER_COUNT', 1)
-        shared_state_dir = settings.get('SHARED_STATE_DIR', '.scrapy_state')
-        state_file = os.path.join(shared_state_dir, 'stf_shared_state.json')
-        lock_file = os.path.join(shared_state_dir, 'stf_shared_state.lock')
-
-        # Inicializa estado se não existir
-        if not os.path.exists(state_file):
-            os.makedirs(shared_state_dir, exist_ok=True)
-            write_state(state_file, {"current_page_number": 1, "done": False})
-
-        self._shared_state_file = state_file
-        self._shared_lock_file = lock_file
-        self.logger.info(f"[PARALLEL] Shared state: {state_file}, lock: {lock_file}")
-        self.logger.info(f"[PARALLEL] Workers: {parallel_count}")
-        self.crawler.stats.set_value('stf/parallel_workers', parallel_count)
-
-        # Carrega query base
-        if not hasattr(self, 'query_array'):
-            self.query_array = self.load_query_array()
-        if not self.query_array:
-            self.logger.error("Nenhuma query encontrada para scraping compartilhado.")
-            return
-        self.shared_query_info = self.query_array[0]
-        self.base_url = self.shared_query_info['url'].split('&page=')[0]
-
-        for i in range(parallel_count):
-            yield self.next_page_request(worker_id=i)
-
-
-    def next_page_request(self, worker_id=0):
-        page_number = get_and_increment_page(self._shared_state_file, self._shared_lock_file)
-        if page_number is None:
-            self.logger.debug(f"[Worker {worker_id}] Paginação finalizada (done=true)")
-            return None
-        self.logger.debug(f"[Worker {worker_id}] acquired_page={page_number}")
-        self.crawler.stats.inc_value('stf/pages_scheduled')
-        url = self.base_url + f"&page={page_number}"
-        return scrapy.Request(
-            url=url,
-            meta={
-                'playwright': True,
-                'playwright_include_page': True,
-                'query_info': self.shared_query_info,
-                'page_number': page_number,
-                'worker_id': worker_id,
-                'playwright_page_methods': [
-                    PageMethod('wait_for_load_state', 'networkidle'),
-                    PageMethod('wait_for_function', '''
-                        () => {
-                            return document.querySelector('div[id^="result-index-"]') ||
-                                   document.querySelector('.resultado-pesquisa') ||
-                                   document.querySelector('.search-results') ||
-                                   document.querySelector('.no-results') ||
-                                   document.querySelector('.loading') === null;
-                        }
-                    ''', timeout=30000),
-                ],
-                'playwright_context_kwargs': {
-                    'ignore_https_errors': True,
-                    'extra_http_headers': {
-                        'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
-                    },
-                },
-            },
-            callback=self.parse_stf_listing_shared,
-            errback=self.handle_error
-        )
-
-    async def parse_stf_listing_shared(self, response):
-        page = response.meta.get("playwright_page")
-        page_number = response.meta.get("page_number")
-        worker_id = response.meta.get("worker_id")
-        query_info = response.meta.get("query_info")
-        self.logger.info(f"[Worker {worker_id}] Processando página {page_number} ({response.url})")
-
-        await page.wait_for_function('''
-            () => {
-                return document.readyState === 'complete' &&
-                       (document.querySelector('div[id^="result-index-"]') ||
-                        document.querySelector('.no-results') ||
-                        document.querySelector('.loading') === null);
-            }
-        ''', timeout=15000)
-
-        result_items = response.css('div[id^="result-index-"]')
-        if not result_items:
-            no_results = response.css('.no-results, .sem-resultados, .empty-results').get()
-            if no_results:
-                self.logger.info(f"[Worker {worker_id}] Nenhum resultado encontrado na página {page_number}.")
-                mark_done(self._shared_state_file, self._shared_lock_file)
-                self.logger.debug(f"[Worker {worker_id}] mark_done chamado (no_results)")
-                return
-            self.logger.warning(f"[Worker {worker_id}] Nenhum item encontrado e sem mensagem de fim. Página: {page_number}")
-            return
-
-        self.logger.info(f"[Worker {worker_id}] Encontrados {len(result_items)} itens na página {page_number}.")
-
-        # Processamento normal dos itens (mantém lógica existente)
-        for i, item in enumerate(result_items):
-            pass  # TODO: implementar extração detalhada se necessário
-
-        # Detecta última página: se menos que o esperado por página
-        expected_per_page = 10
-        if len(result_items) < expected_per_page:
-            self.logger.info(f"[Worker {worker_id}] Última página detectada pelo número de itens.")
-            mark_done(self._shared_state_file, self._shared_lock_file)
-            self.logger.debug(f"[Worker {worker_id}] mark_done chamado (última página)")
-            return
-
-        # Agenda próxima página para este worker
-        next_req = self.next_page_request(worker_id=worker_id)
-        if next_req:
-            yield next_req
+            self.items_extracted = 0
+            self.max_items = None  # No limit in production
+            self.logger.info("🚀 Running in PRODUCTION mode - no item limit")
+            # Remove any item count limit
+            if 'CLOSESPIDER_ITEMCOUNT' in self.custom_settings:
+                del self.custom_settings['CLOSESPIDER_ITEMCOUNT']
 
     def save_groups_to_json(self, total_pages, base_url, query_info):
-        """Save page groups to separate JSON files for worker distribution"""
-        import json
-        from pathlib import Path
+        """Save groups to JSON files for worker distribution"""
+        self.logger.info(f"🔄 Transitioning from fixed groups to dynamic page pool system...")
+        self.logger.info(f"� Total pages: {total_pages}, Workers: {self.parallel_groups_count}")
         
-        if total_pages <= 1:
-            # Single page - create one group file
-            group_data = {
-                "group_id": 1,
-                "article": query_info.get('artigo', 'unknown'),
-                "query": query_info.get('query', ''),
-                "pages": [
-                    {
-                        "page_number": 1,
-                        "url": f"{base_url}&page=1"
-                    }
-                ]
-            }
-            
-            groups_dir = Path(__file__).parent.parent.parent / 'temp_queue' / 'groups'
-            groups_dir.mkdir(exist_ok=True)
-            
-            group_file = groups_dir / f"group_1_article_{query_info.get('artigo', 'unknown')}.json"
-            with open(group_file, 'w', encoding='utf-8') as f:
-                json.dump(group_data, f, indent=2, ensure_ascii=False)
-            
-            self.logger.info(f"📁 Created single group file: {group_file}")
-            return [str(group_file)]
+        # Create the new PagePool instance
+        page_pool = PagePool(
+            total_pages=total_pages, 
+            base_url=base_url, 
+            query_info=query_info, 
+            max_workers=self.parallel_groups_count,
+            logger=self.logger
+        )
         
-        # Calculate pages per group
-        pages_per_group = max(1, total_pages // self.parallel_groups_count)
-        remainder = total_pages % self.parallel_groups_count
+        # Save pool state to JSON file
+        pool_file = page_pool.save_pool_to_json()
         
-        groups_dir = Path(__file__).parent.parent.parent / 'temp_queue' / 'groups'
-        groups_dir.mkdir(exist_ok=True)
+        self.logger.info(f"🏊‍♂️ Page pool created successfully!")
+        self.logger.info(f"📋 Pool details:")
+        self.logger.info(f"   • Article: {query_info.get('artigo', 'unknown')}")
+        self.logger.info(f"   • Pages: {total_pages}")
+        self.logger.info(f"   • Max workers: {self.parallel_groups_count}")
+        self.logger.info(f"   • Pool file: {Path(pool_file).name}")
         
-        group_files = []
-        current_page = 1
-        
-        for group_idx in range(self.parallel_groups_count):
-            # Calculate group size with remainder distribution
-            group_size = pages_per_group + (1 if group_idx < remainder else 0)
-            
-            if current_page <= total_pages:
-                # Create pages list for this group
-                pages_data = []
-                for page_in_group in range(group_size):
-                    if current_page <= total_pages:
-                        page_url = f"{base_url}&page={current_page}"
-                        pages_data.append({
-                            "page_number": current_page,
-                            "url": page_url
-                        })
-                        current_page += 1
-                
-                if pages_data:  # Only create file if group has pages
-                    group_data = {
-                        "group_id": group_idx + 1,
-                        "article": query_info.get('artigo', 'unknown'),
-                        "query": query_info.get('query', ''),
-                        "pages": pages_data
-                    }
-                    
-                    group_file = groups_dir / f"group_{group_idx + 1}_article_{query_info.get('artigo', 'unknown')}.json"
-                    with open(group_file, 'w', encoding='utf-8') as f:
-                        json.dump(group_data, f, indent=2, ensure_ascii=False)
-                    
-                    group_files.append(str(group_file))
-                    
-                    pages_range = f"{pages_data[0]['page_number']}-{pages_data[-1]['page_number']}"
-                    self.logger.info(f"📁 Created Group {group_idx + 1}: {len(pages_data)} pages ({pages_range}) → {group_file.name}")
-        
-        self.logger.info(f"✅ Created {len(group_files)} group files for parallel worker processing")
-        return group_files
+        # Return pool file as single-item list for compatibility
+        return [pool_file]
 
     def divide_pages_into_groups(self, total_pages, base_url):
         """Divide pages into 3 groups for simultaneous parallel processing - creates full URLs"""
@@ -368,11 +263,7 @@ class StfJurisprudenciaSpider(scrapy.Spider):
                     })
                 current_page += group_size
         
-        self.logger.info(f"📊 Divided {total_pages} pages into {len(groups)} SIMULTANEOUS groups:")
-        for i, group in enumerate(groups):
-            pages = group["pages"]
-            self.logger.info(f"   Group {i+1}: pages {pages[0]}-{pages[-1]} ({len(pages)} pages) - WILL RUN CONCURRENTLY")
-            self.logger.info(f"   🔗 Group {i+1} first URL: {group['urls'][0]}")
+
         
         return groups
 
@@ -460,11 +351,31 @@ class StfJurisprudenciaSpider(scrapy.Spider):
         self.current_query_info = query_info
 
         try:
-            self.logger.info(f"Parsing STF listing for Article {query_info['artigo']}: {response.url}")
+            # Simplified logging
+            if group_index is not None:
+                self.logger.info(f"🔥 Worker-{group_index} processing page {page_number} | Article {query_info['artigo']}")
+            else:
+                self.logger.info(f"🔍 Discovery: Processing page {page_number} for Article {query_info['artigo']}")
 
-            # Extract current page number and total pages on first load
-            if self.total_pages is None:
+            # Extract current page number and total pages on first load (skip in pool mode)
+            if self.total_pages is None and not self.pool_mode:
                 await self.extract_pagination_info(page, response)
+                
+                # Start immediate parallel processing if this is the first page and we have multiple pages
+                if (page_number == 1 and self.total_pages and self.total_pages > 1 and 
+                    not self.initial_parallel_processing_started and group_index is None):
+                    
+                    # Save groups to JSON files for worker distribution
+                    if self.base_url:
+                        group_files = self.save_groups_to_json(self.total_pages, self.base_url, query_info)
+                        self.logger.info(f"📁 Created {len(group_files)} groups with {self.total_pages} pages for 3 workers")
+                        
+                        self.initial_parallel_processing_started = True
+                        
+                        # If in discovery mode, stop processing after creating groups
+                        if self.discovery_mode:
+                            self.logger.info(f"🛑 Discovery complete - terminating spider")
+                            return
 
             # Wait for page to be fully interactive and check what we actually have
             await page.wait_for_function('''
@@ -516,8 +427,9 @@ class StfJurisprudenciaSpider(scrapy.Spider):
                     self.logger.info(f"Found {len(clipboard_links)} clipboard-like links")
                     self.logger.info(f"Found {len(processo_links)} processo-like links")
 
-                # Check for next page using new strategy
-                async for next_page_request in self.handle_pagination_new_strategy(response, query_info):
+                # Check for next page using new strategy - yield all parallel requests at once
+                parallel_requests = self.handle_pagination_new_strategy(response, query_info)
+                for next_page_request in parallel_requests:
                     yield next_page_request
                 return
 
@@ -525,7 +437,11 @@ class StfJurisprudenciaSpider(scrapy.Spider):
             items_to_process = len(result_items)
             self.total_items_on_current_page = items_to_process
             self.items_processed_on_current_page = 0
-            self.logger.info(f"📊 Starting to process {items_to_process} items on page {self.current_page_number}/{self.total_pages or '?'}")
+            if group_index is not None:
+                self.logger.info(f"📊 [PARALLEL] Group {group_index + 1} starting to process {items_to_process} items on page {page_number}/{self.total_pages or '?'}")
+                self.logger.info(f"⚡ [PARALLEL] This is running CONCURRENTLY with other groups!")
+            else:
+                self.logger.info(f"📊 [INITIAL] Starting to process {items_to_process} items on page {page_number}/{self.total_pages or '?'}")
 
             # Process each result item and yield detailed requests
             for i, item in enumerate(result_items):
@@ -796,7 +712,6 @@ class StfJurisprudenciaSpider(scrapy.Spider):
             # Log what we extracted
             self.logger.info(f"Extracted details - Partes: {'✅' if partes_text else '❌'}, Decision: {'✅' if decision_text else '❌'}, Legislacao: {'✅' if legislacao_text else '❌'}")
 
-
             # Create and yield the item
             created_item = self.yield_item_with_limit_check(item_data)
             yield created_item
@@ -843,8 +758,6 @@ class StfJurisprudenciaSpider(scrapy.Spider):
     async def extract_pagination_info(self, page, response):
         """Extract pagination information from the page"""
         try:
-            self.logger.info("🔍 Extracting pagination information...")
-            
             # Wait for pagination element to be available
             await page.wait_for_function('''
                 () => {
@@ -858,7 +771,6 @@ class StfJurisprudenciaSpider(scrapy.Spider):
             
             if pagination_element:
                 pagination_text = await pagination_element.text_content()
-                self.logger.info(f"📄 Found pagination text: '{pagination_text}'")
                 
                 # Extract total pages from text like "1 de 2", "2 de 5", " de 2", etc.
                 import re
@@ -875,14 +787,7 @@ class StfJurisprudenciaSpider(scrapy.Spider):
                     self.current_page_number = current_page
                     self.total_pages = total_pages
                     
-                    self.logger.info(f"✅ Extracted pagination: current page {current_page}, total pages {total_pages}")
-                    
-                    # Log examples of what this means for pagination
-                    if total_pages > 1:
-                        remaining_pages = list(range(current_page + 1, total_pages + 1))
-                        self.logger.info(f"📋 Will navigate through pages: {remaining_pages}")
-                    else:
-                        self.logger.info("📋 Only one page available - no pagination needed")
+                    self.logger.info(f"📊 Found {total_pages} pages total")
                     
                     # Store base URL for pagination
                     current_url = response.url
@@ -899,7 +804,15 @@ class StfJurisprudenciaSpider(scrapy.Spider):
                     new_query = urllib.parse.urlencode(query_params, doseq=True)
                     self.base_url = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}?{new_query}"
                     
-                    self.logger.info(f"📦 Base URL for pagination: {self.base_url}")
+                    # Divide pages into groups for parallel processing with URLs
+                    if total_pages > 1:
+                        self.page_groups = self.divide_pages_into_groups(total_pages, self.base_url)
+
+                    else:
+                        self.page_groups = [{"group_index": 0, "urls": [f"{self.base_url}&page=1"], "pages": [1]}]
+                        self.logger.info("📋 Only one page available - no parallel processing needed")
+                    
+
                 else:
                     self.logger.warning(f"❌ Could not parse pagination text: '{pagination_text}' - Expected format: 'X de Y' or ' de Y'")
                     self.current_page_number = 1
@@ -916,68 +829,104 @@ class StfJurisprudenciaSpider(scrapy.Spider):
             self.current_page_number = 1
             self.total_pages = 1
 
-    async def handle_pagination_new_strategy(self, response, query_info):
-        """Handle pagination using URL modification strategy - works for any number of pages"""
+    def handle_pagination_new_strategy(self, response, query_info):
+        """Handle pagination using native Scrapy parallelism - yields ALL page groups simultaneously"""
+        requests = []
         try:
-            # Check if we have more pages to process
-            if self.total_pages is None or self.current_page_number >= self.total_pages:
-                self.logger.info(f"🏁 Reached last page ({self.current_page_number}/{self.total_pages or '?'}). Pagination complete.")
-                return
-            
-            # Calculate next page number
-            next_page = self.current_page_number + 1
+            # Check if we have page groups to process
+            if not self.page_groups:
+                self.logger.info(f"🏁 No page groups to process. Pagination complete.")
+                return requests
             
             # Check dev mode limits
             if self.dev_mode and self.max_items is not None and self.items_extracted >= self.max_items:
                 self.logger.info(f"🛑 DEV MODE: Reached maximum items limit ({self.max_items}). Stopping pagination.")
-                return
+                return requests
             
-            self.logger.info(f"➡️ Moving to next page: {next_page}/{self.total_pages}")
+            self.logger.info(f"🚀 [PARALLEL-INIT] Starting SIMULTANEOUS processing of ALL {len(self.page_groups)} page groups")
             
-            # Construct next page URL by appending page parameter
-            next_page_url = f"{self.base_url}&page={next_page}"
+            # Count total pages across all groups
+            total_pages_to_process = sum(len(group["pages"]) for group in self.page_groups)
+            self.logger.info(f"⚡ [PARALLEL-INIT] This will run {total_pages_to_process} pages CONCURRENTLY")
             
-            self.logger.info(f"🌐 Next page URL: {next_page_url}")
+            # Generate requests for ALL page groups SIMULTANEOUSLY using pre-built URLs
+            for group_data in self.page_groups:
+                group_idx = group_data["group_index"]
+                group_urls = group_data["urls"]
+                group_pages = group_data["pages"]
+                
+                group_name = f"Group {group_idx + 1}"
+                self.logger.info(f"📦 [PARALLEL-INIT] {group_name}: pages {group_pages[0]}-{group_pages[-1]} ({len(group_pages)} pages) - RUNNING NOW!")
+                
+                for url_idx, page_url in enumerate(group_urls):
+                    page_num = group_pages[url_idx]
+                    
+                    # Skip page 1 as it's already being processed
+                    if page_num == 1:
+                        self.pages_processed.add(page_num)
+                        self.logger.info(f"⏭️  [PARALLEL-INIT] Skipping page {page_num} (already being processed)")
+                        continue
+                    
+                    # Skip if already processed
+                    if page_num in self.pages_processed:
+                        self.logger.info(f"⏭️  [PARALLEL-INIT] Skipping page {page_num} (already processed)")
+                        continue
+                    
+                    self.logger.info(f"🌐 [PARALLEL-INIT] Creating request for page {page_num} ({group_name}) - CONCURRENT")
+                    self.logger.info(f"🔗 [PARALLEL-INIT] URL: {page_url}")
+                    
+                    # Mark as processed to avoid duplicates
+                    self.pages_processed.add(page_num)
+                    
+                    # Create request for this page using pre-built URL
+                    request = scrapy.Request(
+                        url=page_url,
+                        meta={
+                            'playwright': True,
+                            'playwright_include_page': True,
+                            'query_info': query_info,
+                            'page_number': page_num,
+                            'group_index': group_idx,
+                            'playwright_page_methods': [
+                                PageMethod('wait_for_load_state', 'networkidle'),
+                                PageMethod('wait_for_function', '''
+                                    () => {
+                                        return document.querySelector('div[id^="result-index-"]') ||
+                                               document.querySelector('.no-results') ||
+                                               document.querySelector('.loading') === null;
+                                    }
+                                ''', timeout=30000),
+                            ],
+                        },
+                        callback=self.parse_stf_listing,
+                        errback=self.handle_error,
+                        dont_filter=True
+                    )
+                    requests.append(request)
             
-            # Update current page number for next iteration
-            self.current_page_number = next_page
+            # Log summary with group-specific information
+            total_pages_to_process = sum(len(group["pages"]) for group in self.page_groups)
+            self.logger.info(f"🎯 PARALLEL EXECUTION SUMMARY:")
+            self.logger.info(f"   ⚡ CONCURRENT GROUPS: {len(self.page_groups)} groups running SIMULTANEOUSLY")
+            self.logger.info(f"   📊 TOTAL PAGES: {total_pages_to_process} pages")  
+            self.logger.info(f"   🚀 CONCURRENT REQUESTS: {len(requests)} requests YIELDED AT ONCE")
+            self.logger.info(f"   🔥 MAX CONCURRENCY: Up to {len(requests)} pages processing in parallel")
             
-            # Reset page tracking counters
-            self.items_processed_on_current_page = 0
-            self.total_items_on_current_page = 0
+            # Log specific pages being processed per group
+            for group_data in self.page_groups:
+                group_idx = group_data["group_index"]
+                group_pages = group_data["pages"]
+                req_count = len([p for p in group_pages if p != 1])  # Exclude page 1 since it's already processing
+                self.logger.info(f"   - Group {group_idx + 1}: {req_count} requests (pages {group_pages[0]}-{group_pages[-1]})")
             
-            # Log progress
-            pages_remaining = self.total_pages - next_page
-            self.logger.info(f"📊 Progress: Page {next_page}/{self.total_pages} ({pages_remaining} pages remaining)")
+            # Clear page groups to prevent re-processing
+            self.page_groups = []
             
-            # Create request for next page
-            yield scrapy.Request(
-                url=next_page_url,
-                meta={
-                    'playwright': True,
-                    'playwright_include_page': True,
-                    'query_info': query_info,
-                    'playwright_page_methods': [
-                        PageMethod('wait_for_load_state', 'networkidle'),
-                        PageMethod('wait_for_function', '''
-                            () => {
-                                return document.querySelector('div[id^="result-index-"]') ||
-                                       document.querySelector('.no-results') ||
-                                       document.querySelector('.loading') === null;
-                            }
-                        ''', timeout=30000),
-                    ],
-                },
-                callback=self.parse_stf_listing,
-                errback=self.handle_error,
-                dont_filter=True
-            )
-            
-            self.logger.info(f"🔄 Next page request created for page {next_page}")
+            return requests
             
         except Exception as e:
-            self.logger.error(f"❌ Error in new pagination strategy: {e}")
-
+            self.logger.error(f"❌ Error in parallel pagination strategy: {e}")
+            return requests
 
     async def extract_pdf_links(self, response):
         """Extract PDF download links from STF processo page"""
@@ -1103,6 +1052,10 @@ class StfJurisprudenciaSpider(scrapy.Spider):
         item['decision'] = item_data.get('decision', '')
         item['legislacao'] = item_data.get('legislacao', '')
         
+        # Add RTF-related fields
+        item['numero_unico'] = item_data.get('numero_unico', '')
+        item['rtf_url'] = item_data.get('rtf_url', '')
+        item['rtf_file_path'] = item_data.get('rtf_file_path', '')
 
         # Increment the items counter
         self.items_extracted += 1
@@ -1152,6 +1105,10 @@ class StfJurisprudenciaSpider(scrapy.Spider):
         item['decision'] = item_data.get('decision', '')
         item['legislacao'] = item_data.get('legislacao', '')
         
+        # Add RTF-related fields
+        item['numero_unico'] = item_data.get('numero_unico', '')
+        item['rtf_url'] = item_data.get('rtf_url', '')
+        item['rtf_file_path'] = item_data.get('rtf_file_path', '')
 
         # Increment the items counter
         self.items_extracted += 1
@@ -1176,6 +1133,10 @@ class StfJurisprudenciaSpider(scrapy.Spider):
                 self.logger.debug(f"Error closing page: {e}")
         item['legislacao'] = item_data.get('legislacao', '')
         
+        # Add RTF-related fields
+        item['numero_unico'] = item_data.get('numero_unico', '')
+        item['rtf_url'] = item_data.get('rtf_url', '')
+        item['rtf_file_path'] = item_data.get('rtf_file_path', '')
 
         # Increment the items counter
         self.items_extracted += 1
@@ -1225,6 +1186,10 @@ class StfJurisprudenciaSpider(scrapy.Spider):
         item['decision'] = item_data.get('decision', '')
         item['legislacao'] = item_data.get('legislacao', '')
         
+        # Add RTF-related fields
+        item['numero_unico'] = item_data.get('numero_unico', '')
+        item['rtf_url'] = item_data.get('rtf_url', '')
+        item['rtf_file_path'] = item_data.get('rtf_file_path', '')
 
         # Increment the items counter
         self.items_extracted += 1

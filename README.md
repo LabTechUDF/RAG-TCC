@@ -60,7 +60,7 @@ python manage.py sequential --show-browser
 ./scripts/dev.sh status
 ```
 
-### **Output**
+### **Output**D
 Data organized by article number in `stf_scraper/data/stf_jurisprudencia/` with:
 - **JSONL files**: Legal decisions by article (art_312/, art_323/, etc.)  
 - **RTF files**: Original STF documents organized by article number
