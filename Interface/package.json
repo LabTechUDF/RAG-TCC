@@ -4,9 +4,9 @@
   "private": true,
   "description": "Nuxt frontend for RAG-TCC",
   "scripts": {
-    "dev": "npx nuxi dev",
+    "dev": "npx nuxi dev --host 0.0.0.0",
     "build": "npx nuxi build",
-    "preview": "npx nuxi preview"
+    "preview": "npx nuxi preview --host 0.0.0.0"
   },
   "dependencies": {
     "@ai-sdk/vue": "^2.0.106",

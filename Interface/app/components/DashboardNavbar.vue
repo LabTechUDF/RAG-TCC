@@ -1,3 +1,8 @@
+<script setup lang="ts">
+const { user } = useAuth()
+const showProfile = ref(false)
+</script>
+
 <template>
   <UDashboardNavbar
     class="sticky lg:absolute top-0 inset-x-0 border-b-0 z-10 bg-default/75 backdrop-blur lg:bg-transparent lg:backdrop-blur-none pointer-events-none"
@@ -13,6 +18,23 @@
         to="/"
         class="lg:hidden"
       />
+
+      <!-- Account avatar for mobile -->
+      <UButton
+        v-if="user"
+        color="neutral"
+        variant="ghost"
+        class="lg:hidden"
+        @click="showProfile = true"
+      >
+        <UAvatar
+          :src="user.profilePicture"
+          :alt="user.name"
+          size="xs"
+        />
+      </UButton>
     </template>
   </UDashboardNavbar>
+
+  <ProfileModal v-model="showProfile" />
 </template>
