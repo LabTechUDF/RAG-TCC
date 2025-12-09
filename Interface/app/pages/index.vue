@@ -2,10 +2,50 @@
 import { marked } from 'marked'
 
 const logger = useClientLogger()
+const { user } = useAuth()
+
+// Message history state
+interface Message {
+  id: string
+  role: 'user' | 'assistant'
+  parts: Array<{ type: 'text', text: string }>
+  timestamp: number
+}
+
+// API Response interfaces
+interface OpenAIResponse {
+  id: string
+  choices: Array<{
+    message: {
+      role: string
+      content: string
+    }
+    finish_reason: string
+  }>
+}
+
+interface DBVectorSearchResult {
+  id: string
+  title?: string
+  text: string
+  court?: string
+  code?: string
+  article?: string
+  date?: string
+  score: number
+}
+
+interface DBVectorSearchResponse {
+  query: string
+  total: number
+  backend: string
+  results: DBVectorSearchResult[]
+}
+
+const messages = ref<Message[]>([])
 const input = ref('')
-const loading = ref(false)
-const response = ref('')
-const useRAG = ref(true) // Toggle entre RAG e chat simples
+const status = ref<'ready' | 'submitted' | 'streaming' | 'error'>('ready')
+const useRAG = ref(true)
 
 const { model } = useModels()
 
@@ -17,65 +57,44 @@ marked.setOptions({
   gfm: true
 })
 
-// Computed property para renderizar Markdown
-const renderedMarkdown = computed(() => {
-  if (!response.value) return ''
-  try {
-    return marked.parse(response.value)
-  } catch (error) {
-    logger.error('Error parsing markdown', 'HomePage', {}, error)
-    return `<pre>${response.value}</pre>`
-  }
-})
+// Build conversation history for API calls
+function buildHistory(): Array<{ role: 'user' | 'assistant', content: string }> {
+  return messages.value.map(msg => ({
+    role: msg.role,
+    content: msg.parts.find(p => p.type === 'text')?.text || ''
+  }))
+}
 
 async function sendToOpenAI(prompt: string) {
-  logger.info('Sending request', 'HomePage', { 
+  logger.info('Sending request', 'HomePage', {
     promptLength: prompt.length,
     model: model.value,
     useRAG: useRAG.value
   })
-  
-  loading.value = true
-  response.value = ''
-  input.value = prompt
-  
+
+  // Add user message to history
+  const userMessage: Message = {
+    id: `user-${Date.now()}`,
+    role: 'user',
+    parts: [{ type: 'text', text: prompt }],
+    timestamp: Date.now()
+  }
+  messages.value.push(userMessage)
+
+  // Set status to submitted (waiting for response to start)
+  status.value = 'submitted'
+
+  // Build history BEFORE adding assistant placeholder (excludes current user message from history sent)
+  const history = buildHistory().slice(0, -1) // Exclude current user message, it's sent separately
+
   try {
-    interface OpenAIResponse {
-      id: string
-      choices: Array<{
-        message: {
-          role: string
-          content: string
-        }
-        finish_reason: string
-      }>
-    }
-
-    interface DBVectorSearchResult {
-      id: string
-      title?: string
-      text: string
-      court?: string
-      code?: string
-      article?: string
-      date?: string
-      score: number
-    }
-
-    interface DBVectorSearchResponse {
-      query: string
-      total: number
-      backend: string
-      results: DBVectorSearchResult[]
-    }
-
-    let finalPrompt = prompt
     let contextInfo = ''
+    let responseText = ''
 
     // Se estiver em modo RAG, usa o novo endpoint RAG otimizado (Markdown direto)
     if (useRAG.value) {
       logger.info('RAG mode enabled - calling DBVECTOR RAG endpoint', 'HomePage', { query: prompt })
-      
+
       try {
         // Chama o novo endpoint RAG que retorna Markdown formatado direto
         const ragResponse = await $fetch<string>('/api/dbvector/rag-query', {
@@ -83,7 +102,8 @@ async function sendToOpenAI(prompt: string) {
           body: {
             promptUsuario: prompt,
             useRag: true,
-            k: 10
+            k: 10,
+            history: history
           }
         })
 
@@ -92,84 +112,76 @@ async function sendToOpenAI(prompt: string) {
           responsePreview: ragResponse.substring(0, 100)
         })
 
-        // A resposta já vem formatada em Markdown, pronta para exibição
-        response.value = ragResponse
-        logger.info('Request completed with RAG', 'HomePage', {
-          responseLength: response.value.length,
-          responsePreview: response.value.substring(0, 200)
-        })
-        
-        // Retorna sem chamar OpenAI diretamente
-        return
-        
+        responseText = ragResponse
+
       } catch (dbvectorError: any) {
         logger.error('Error querying DBVECTOR RAG', 'HomePage', {
           error: dbvectorError.message
         }, dbvectorError)
-        
-        contextInfo = '⚠️ Erro ao acessar base de conhecimento RAG - usando modo chat simples'
-        // Continua com o fluxo normal (chat simples) se houver erro no RAG
+
+        contextInfo = '⚠️ Erro ao acessar base de conhecimento RAG - usando modo chat simples\n\n'
       }
     }
-    
+
     // FALLBACK: Modo chat simples ou erro no RAG
-    // Usa a API do servidor que tem acesso seguro à chave da OpenAI
-    const result = await $fetch<OpenAIResponse>('/api/openai/chat', {
-      method: 'POST',
-      body: {
-        prompt: finalPrompt,
-        model: model.value?.replace('openai/', '') || 'gpt-4o-mini'
-      }
-    })
-    
-    logger.debug('OpenAI raw response received', 'HomePage', {
-      responseId: result?.id,
-      choicesCount: result?.choices?.length,
-      fullResponse: result
-    })
-    
-    // Extrai o texto da resposta da estrutura da OpenAI
-    const extractedText = result?.choices?.[0]?.message?.content || ''
-    
-    logger.debug('Extracted text from response', 'HomePage', {
-      hasExtractedText: !!extractedText,
-      extractedTextLength: extractedText.length,
-      extractedTextPreview: extractedText.substring(0, 100)
-    })
-    
-    if (!extractedText) {
-      logger.warn('No content extracted from OpenAI response', 'HomePage', {
-        responseStructure: {
-          hasChoices: !!result?.choices,
-          choicesLength: result?.choices?.length,
-          firstChoice: result?.choices?.[0],
-          hasMessage: !!result?.choices?.[0]?.message,
-          hasContent: !!result?.choices?.[0]?.message?.content
+    if (!responseText) {
+      const result = await $fetch<OpenAIResponse>('/api/openai/chat', {
+        method: 'POST',
+        body: {
+          prompt: prompt,
+          model: model.value?.replace('openai/', '') || 'gpt-5',
+          history: history
         }
       })
+
+      logger.debug('OpenAI raw response received', 'HomePage', {
+        responseId: result?.id,
+        choicesCount: result?.choices?.length
+      })
+
+      // Extrai o texto da resposta da estrutura da OpenAI
+      const extractedText = result?.choices?.[0]?.message?.content || ''
+
+      if (!extractedText) {
+        logger.warn('No content extracted from OpenAI response', 'HomePage')
+        responseText = 'Não foi possível extrair a resposta da OpenAI'
+        status.value = 'error'
+      } else {
+        responseText = contextInfo + extractedText
+      }
     }
-    
-    // Adiciona informação de contexto se estiver em modo RAG
-    const finalResponse = contextInfo 
-      ? `${contextInfo}\n\n${extractedText || 'Não foi possível extrair a resposta da OpenAI'}`
-      : extractedText || 'Não foi possível extrair a resposta da OpenAI'
-    
-    response.value = finalResponse
+
+    // Add assistant message with response (only after we have content)
+    const assistantMessage: Message = {
+      id: `assistant-${Date.now()}`,
+      role: 'assistant',
+      parts: [{ type: 'text', text: responseText }],
+      timestamp: Date.now()
+    }
+    messages.value.push(assistantMessage)
+    status.value = 'ready'
+
     logger.info('Request completed', 'HomePage', {
-      responseLength: response.value.length,
-      useRAG: useRAG.value,
-      responsePreview: response.value.substring(0, 200)
+      responseLength: responseText.length,
+      useRAG: useRAG.value
     })
   } catch (error: any) {
     logger.error('Error processing request', 'HomePage', {
       statusCode: error?.statusCode,
       message: error?.data?.message || error?.message
     }, error)
-    
+
     const errorMessage = error?.data?.message || error?.message || 'Desculpe, ocorreu um erro ao processar sua solicitação.'
-    response.value = errorMessage
-  } finally {
-    loading.value = false
+
+    // Add error message as assistant response
+    const assistantMessage: Message = {
+      id: `assistant-${Date.now()}`,
+      role: 'assistant',
+      parts: [{ type: 'text', text: errorMessage }],
+      timestamp: Date.now()
+    }
+    messages.value.push(assistantMessage)
+    status.value = 'error'
   }
 }
 
@@ -178,7 +190,6 @@ async function copyToClipboard(text: string) {
   try {
     await navigator.clipboard.writeText(text)
     logger.info('Text copied to clipboard successfully', 'HomePage')
-    // Aqui você pode adicionar um toast de sucesso se quiser
   } catch (error: any) {
     logger.error('Error copying to clipboard', 'HomePage', {}, error)
   }
@@ -187,11 +198,49 @@ async function copyToClipboard(text: string) {
 function onSubmit() {
   if (input.value.trim()) {
     logger.debug('Form submitted', 'HomePage', { inputLength: input.value.length })
-    sendToOpenAI(input.value)
+    const prompt = input.value
+    input.value = '' // Clear input immediately
+    sendToOpenAI(prompt)
   } else {
     logger.warn('Form submitted with empty input', 'HomePage')
   }
 }
+
+// Retry last failed message
+function onRetry() {
+  // Find the last user message
+  const lastUserMessage = messages.value.filter(m => m.role === 'user').pop()
+  if (lastUserMessage) {
+    const prompt = getTextFromMessage(lastUserMessage)
+    logger.info('Retrying last message', 'HomePage', { prompt })
+    
+    // Remove the last assistant message (the failed one)
+    const lastAssistantIndex = messages.value.findIndex(
+      (m, i) => i > 0 && m.role === 'assistant' && messages.value[i - 1].id === lastUserMessage.id
+    )
+    if (lastAssistantIndex !== -1) {
+      messages.value.splice(lastAssistantIndex, 1)
+    }
+    
+    sendToOpenAI(prompt)
+  }
+}
+
+// Helper to get text from message for rendering
+function getTextFromMessage(message: Message): string {
+  return message.parts.find(p => p.type === 'text')?.text || ''
+}
+
+// Helper to render markdown
+function renderMarkdown(text: string): string {
+  try {
+    return marked.parse(text)
+  } catch (error) {
+    logger.error('Error parsing markdown', 'HomePage', {}, error)
+    return `<pre>${text}</pre>`
+  }
+}
+
 </script>
 
 <template>
@@ -201,124 +250,169 @@ function onSubmit() {
     </template>
 
     <template #body>
-      <UContainer class="flex-1 flex flex-col justify-center gap-4 sm:gap-6 py-8">
-        <h1 class="text-3xl sm:text-4xl text-highlighted font-bold">
-          Como posso ajudar?
-        </h1>
+      <div class="flex flex-col h-full">
+        <!-- Chat Messages Area -->
+        <div v-if="messages.length > 0" class="flex-1 overflow-y-auto px-4 py-[60px]">
+          <UChatMessages 
+            :messages="messages" 
+            :status="status"
+            :user="{
+              avatar: user ? { src: user.profilePicture, alt: user.name } : { icon: 'i-lucide-user' },
+              variant: 'soft',
+              side: 'right'
+            }"
+            :assistant="{
+              avatar: { icon: 'i-lucide-bot' },
+              variant: 'outline',
+              side: 'left'
+            }"
+            should-auto-scroll
+          >
+            <template #content="{ message }">
+              <div 
+                v-html="renderMarkdown(getTextFromMessage(message))" 
+                class="prose prose-sm dark:prose-invert max-w-none markdown-content"
+              />
+            </template>
 
-        <!-- Seletor de Modo: RAG vs Chat Simples - Design Minimalista -->
-        <div class="space-y-3">
-          <div class="flex items-center justify-between">
-            <label class="text-sm font-medium text-gray-600 dark:text-gray-400">
-              Modo de Operação
-            </label>
-            <span class="text-xs text-gray-500 dark:text-gray-500">
-              {{ useRAG ? 'Base de Conhecimento' : 'OpenAI Direto' }}
-            </span>
-          </div>
-          
-          <div class="grid grid-cols-2 gap-2">
-            <!-- RAG Mode -->
-            <button
-              @click="useRAG = true"
-              :class="[
-                'group relative flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all duration-200',
-                useRAG 
-                  ? 'bg-gradient-to-br from-primary-500 to-primary-600 shadow-lg shadow-primary-500/25' 
-                  : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-600 hover:shadow-md'
-              ]"
-            >
-              <div :class="[
-                'flex items-center gap-2 transition-all',
-                useRAG ? 'text-white' : 'text-gray-700 dark:text-gray-300'
-              ]">
-                <div :class="[
-                  'w-1.5 h-1.5 rounded-full transition-all',
-                  useRAG ? 'bg-white shadow-lg shadow-white/50' : 'bg-gray-300 dark:bg-gray-600 group-hover:bg-primary-400'
-                ]" />
-                <span class="text-sm font-medium">RAG</span>
-              </div>
-            </button>
-
-            <!-- Simple Chat Mode -->
-            <button
-              @click="useRAG = false"
-              :class="[
-                'group relative flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all duration-200',
-                !useRAG 
-                  ? 'bg-gradient-to-br from-primary-500 to-primary-600 shadow-lg shadow-primary-500/25' 
-                  : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-600 hover:shadow-md'
-              ]"
-            >
-              <div :class="[
-                'flex items-center gap-2 transition-all',
-                !useRAG ? 'text-white' : 'text-gray-700 dark:text-gray-300'
-              ]">
-                <div :class="[
-                  'w-1.5 h-1.5 rounded-full transition-all',
-                  !useRAG ? 'bg-white shadow-lg shadow-white/50' : 'bg-gray-300 dark:bg-gray-600 group-hover:bg-primary-400'
-                ]" />
-                <span class="text-sm font-medium">Chat Simples</span>
-              </div>
-            </button>
-          </div>
-          
-          <!-- Descrição do modo selecionado - Minimalista -->
-          <div class="px-3 py-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg border-l-2 border-primary-500">
-            <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-              <template v-if="useRAG">
-                Respostas baseadas em documentos jurídicos da base de conhecimento para informações precisas e contextualizadas.
-              </template>
-              <template v-else>
-                Conversação direta com o modelo OpenAI. Ideal para perguntas gerais sem necessidade de documentação específica.
-              </template>
-            </p>
-          </div>
-        </div>
-
-        <UChatPrompt
-          v-model="input"
-          :status="loading ? 'streaming' : 'ready'"
-          class="[view-transition-name:chat-prompt]"
-          variant="subtle"
-          @submit="onSubmit"
-        >
-          <UChatPromptSubmit color="neutral" />
-
-          <template #footer>
-            <ModelSelect v-model="model" />
-          </template>
-        </UChatPrompt>
-
-        <!-- Área de Resposta -->
-        <div v-if="response || loading" class="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <div v-if="loading" class="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-500"></div>
-            <span>Processando sua solicitação...</span>
-          </div>
-          
-          <div v-else class="space-y-3">
-            <div class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-              <UIcon name="i-lucide-sparkles" class="h-4 w-4" />
-              Resposta da IA
-            </div>
-            <div class="prose prose-sm dark:prose-invert max-w-none">
-              <!-- Renderiza Markdown -->
-              <div v-html="renderedMarkdown" class="text-gray-900 dark:text-gray-100 leading-relaxed markdown-content"></div>
-            </div>
-            <div class="flex gap-2">
+            <template #actions="{ message }">
               <UButton 
+                v-if="message.role === 'assistant' && getTextFromMessage(message)"
                 icon="i-lucide-copy" 
                 size="xs" 
-                variant="outline" 
-                @click="copyToClipboard(response)"
+                variant="ghost" 
+                color="neutral"
+                @click="copyToClipboard(getTextFromMessage(message))"
+              />
+            </template>
+
+            <template #indicator>
+              <UButton
+                class="px-0"
+                color="neutral"
+                variant="link"
+                loading
+                loading-icon="i-lucide-loader-circle"
+                label="Thinking..."
+              />
+            </template>
+          </UChatMessages>
+        </div>
+
+        <!-- Welcome Screen (when no messages) -->
+        <UContainer v-else class="flex-1 flex flex-col justify-center gap-4 sm:gap-6 py-8">
+          <h1 class="text-3xl sm:text-4xl text-highlighted font-bold">
+            Como posso ajudar?
+          </h1>
+
+          <!-- Seletor de Modo: RAG vs Chat Simples -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="text-sm font-medium text-gray-600 dark:text-gray-400">
+                Modo de Operação
+              </label>
+              <span class="text-xs text-gray-500 dark:text-gray-500">
+                {{ useRAG ? 'Base de Conhecimento' : 'OpenAI Direto' }}
+              </span>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-2">
+              <!-- RAG Mode -->
+              <button
+                @click="useRAG = true"
+                :class="[
+                  'group relative flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all duration-200',
+                  useRAG 
+                    ? 'bg-gradient-to-br from-primary-500 to-primary-600 shadow-lg shadow-primary-500/25' 
+                    : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-600 hover:shadow-md'
+                ]"
               >
-                Copiar
-              </UButton>
+                <div :class="[
+                  'flex items-center gap-2 transition-all',
+                  useRAG ? 'text-white' : 'text-gray-700 dark:text-gray-300'
+                ]">
+                  <div :class="[
+                    'w-1.5 h-1.5 rounded-full transition-all',
+                    useRAG ? 'bg-white shadow-lg shadow-white/50' : 'bg-gray-300 dark:bg-gray-600 group-hover:bg-primary-400'
+                  ]" />
+                  <span class="text-sm font-medium">RAG</span>
+                </div>
+              </button>
+
+              <!-- Simple Chat Mode -->
+              <button
+                @click="useRAG = false"
+                :class="[
+                  'group relative flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all duration-200',
+                  !useRAG 
+                    ? 'bg-gradient-to-br from-primary-500 to-primary-600 shadow-lg shadow-primary-500/25' 
+                    : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-600 hover:shadow-md'
+                ]"
+              >
+                <div :class="[
+                  'flex items-center gap-2 transition-all',
+                  !useRAG ? 'text-white' : 'text-gray-700 dark:text-gray-300'
+                ]">
+                  <div :class="[
+                    'w-1.5 h-1.5 rounded-full transition-all',
+                    !useRAG ? 'bg-white shadow-lg shadow-white/50' : 'bg-gray-300 dark:bg-gray-600 group-hover:bg-primary-400'
+                  ]" />
+                  <span class="text-sm font-medium">Chat Simples</span>
+                </div>
+              </button>
+            </div>
+            
+            <!-- Descrição do modo selecionado -->
+            <div class="px-3 py-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg border-l-2 border-primary-500">
+              <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                <template v-if="useRAG">
+                  Respostas baseadas em documentos jurídicos da base de conhecimento para informações precisas e contextualizadas.
+                </template>
+                <template v-else>
+                  Conversação direta com o modelo OpenAI. Ideal para perguntas gerais sem necessidade de documentação específica.
+                </template>
+              </p>
             </div>
           </div>
-        </div>
-      </UContainer>
+        </UContainer>
+
+        <!-- Chat Prompt - Fixed at bottom -->
+        <UContainer class="py-4 sm:py-6">
+          <UChatPrompt
+            v-model="input"
+            :status="status"
+            placeholder="Digite sua pergunta..."
+            @submit="onSubmit"
+          >
+            <!-- Custom submit button without stop functionality (no streaming) -->
+            <UButton
+              v-if="status === 'error'"
+              type="button"
+              icon="i-lucide-rotate-ccw"
+              color="error"
+              variant="soft"
+              size="md"
+              square
+              @click="onRetry"
+            />
+            <UButton
+              v-else
+              type="submit"
+              :icon="status === 'submitted' ? '' : 'i-lucide-arrow-up'"
+              :loading="status === 'submitted'"
+              :disabled="status === 'submitted'"
+              color="primary"
+              variant="solid"
+              size="md"
+              square
+            />
+
+            <template #footer>
+              <ModelSelect v-model="model" />
+            </template>
+          </UChatPrompt>
+        </UContainer>
+      </div>
     </template>
   </UDashboardPanel>
 </template>

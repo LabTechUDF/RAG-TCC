@@ -25,6 +25,7 @@ from src.rag_normalizer import get_normalizer
 from src.storage.base import VectorStore
 from src.schema import SearchResult
 from src import embeddings
+from src.request_logger import RequestLogger
 
 log = logging.getLogger(__name__)
 
@@ -109,6 +110,8 @@ TEMPLATE_RAG_SEEU_MARKDOWN = """Você é um assistente jurídico especializado e
 - Query original: "{query_original}"
 - Query normalizada: "{query_normalizada}"
 
+{historico_conversa}
+
 **DADOS DE EXECUÇÃO PENAL IDENTIFICADOS:**
 {dados_execucao}
 
@@ -123,16 +126,42 @@ TEMPLATE_RAG_SEEU_MARKDOWN = """Você é um assistente jurídico especializado e
 ---
 
 **SUA TAREFA:**
-Gerar uma resposta em Markdown LIMPO e BEM FORMATADO, seguindo EXATAMENTE a estrutura abaixo.
+Gerar uma resposta em Markdown LIMPO e BEM FORMATADO. Siga as diretrizes abaixo de forma FLEXÍVEL - adapte as seções conforme necessário para responder da melhor forma possível.
 
-**REGRAS DE FORMATAÇÃO CRÍTICAS:**
-1. Use quebras de linha duplas entre seções (\\n\\n)
+**REGRAS DE FORMATAÇÃO:**
+1. Use quebras de linha duplas entre seções
 2. Use bullets (-) para listas
 3. Use **negrito** para destacar informações importantes
 4. Mantenha parágrafos curtos e diretos
-5. Separe visualmente cada jurisprudência
+
+**REGRAS CRÍTICAS - LEIA COM ATENÇÃO:**
+
+1. **INCLUA TODAS as informações disponíveis nos documentos.** Cada documento fornecido contém metadados como Tribunal, Número do Processo, Relator, Data de Julgamento, Órgão Julgador, Tema. **USE ESSES DADOS** na sua resposta - eles são importantes para a fundamentação jurídica.
+
+2. **NUNCA use placeholders genéricos.** Não escreva "[TRIBUNAL]", "[NÚMERO]", "[ANO]", "XX.X%". Se um campo específico não está disponível no documento, simplesmente não mencione esse campo - mas INCLUA todos os campos que ESTÃO disponíveis.
+
+3. **Baseie-se APENAS nos documentos fornecidos.** NÃO invente números de processos, tribunais, datas ou URLs. Use EXATAMENTE os dados fornecidos nos documentos acima.
+
+4. **Se a informação for insuficiente para responder, FAÇA PERGUNTAS.** Ao invés de dar uma resposta incompleta ou genérica, pergunte ao usuário o que você precisa saber para ajudá-lo melhor. Exemplos:
+   - "Para analisar melhor seu caso, preciso saber: qual é o regime atual do apenado?"
+   - "Você poderia informar há quanto tempo a pena está sendo cumprida?"
+   - "O crime cometido é hediondo ou comum?"
+
+5. **Se os documentos não tratam do tema perguntado, seja transparente.** Diga claramente que a base de dados não contém jurisprudência específica sobre aquele tema.
+
+6. **Considere o histórico da conversa** para dar respostas contextualizadas e evitar repetir informações já fornecidas.
+
+7. **Seja CONCISO e DIRETO.** Não repita seções vazias.
+
+8. **NUNCA exiba "N/A" ou campos vazios.** Se um campo não está disponível, simplesmente omita-o.
+
+9. **Diferencie tipos de documentos:**
+   - A seção "📚 Documentos Analisados" deve listar TODOS os documentos relevantes (leis, jurisprudência, doutrina, etc.) com as informações disponíveis.
+   - A seção "⚖️ Jurisprudências Relevantes" só deve aparecer se houver documentos de JURISPRUDÊNCIA com metadados completos (número do processo, relator, ano). Se os documentos forem apenas leis ou não tiverem esses metadados, **OMITA completamente esta seção**.
 
 ---
+
+**ESTRUTURA DA RESPOSTA (siga fielmente):**
 
 ## 📋 Resumo Objetivo
 
@@ -144,35 +173,46 @@ Gerar uma resposta em Markdown LIMPO e BEM FORMATADO, seguindo EXATAMENTE a estr
 
 ## 📚 Documentos Analisados
 
+Para CADA documento relevante, adapte o formato conforme o tipo de documento:
+
+**Para Jurisprudência:**
 **Documento 1 – [TRIBUNAL] – [PROCESSO] – [ANO]**
-- **Relevância:** XX.X%
-- **Tema:** [Resumo em 1 linha do tema central]
+- **Relevância:** [percentual]%
+- **Tema:** [tema central]
 
-**Documento 2 – [TRIBUNAL] – [PROCESSO] – [ANO]**
-- **Relevância:** XX.X%
-- **Tema:** [Resumo em 1 linha do tema central]
+**Para Legislação:**
+**Documento X – [Nome da Lei/Código] – [Artigo]**
+- **Relevância:** [percentual]%
+- **Conteúdo:** [resumo do que o artigo dispõe]
 
-[Repita para cada documento]
+**Para outros documentos (doutrina, súmulas, etc.):**
+**Documento X – [Tipo] – [Fonte/Autor se disponível]**
+- **Relevância:** [percentual]%
+- **Tema:** [tema central]
+
+[Inclua apenas os campos que existem no documento - não use "N/A"]
 
 ---
 
 ## ⚖️ Jurisprudências Relevantes
 
-### 📌 [TRIBUNAL] – Processo nº [NÚMERO]
+**⚠️ IMPORTANTE: Só inclua esta seção se houver documentos de JURISPRUDÊNCIA com metadados reais (processo, relator, ano). Caso contrário, OMITA esta seção completamente.**
 
-**📊 Relevância:** XX.X%  
-**📅 Ano:** AAAA  
-**🏛️ Relator(a):** [Nome do relator se disponível]  
-**📑 Tema:** [Tema principal da decisão]
+Para CADA jurisprudência com dados completos:
+
+### 📌 [TRIBUNAL] – Processo nº [NÚMERO COMPLETO DO PROCESSO]
+
+**📊 Relevância:** [percentual]%
+**📅 Ano:** [ano]
+**🏛️ Relator(a):** [nome do relator]
+**📑 Tema:** [tema principal]
 
 **💡 Trecho Relevante:**
-> "[Trecho específico mais importante que fundamenta a análise, entre 2-4 linhas]"
+> "[Copie o trecho mais importante do documento que fundamenta a análise]"
 
 ---
 
-### 📌 [TRIBUNAL] – Processo nº [NÚMERO]
-
-[Repita a mesma estrutura para cada jurisprudência]
+[Repita para cada jurisprudência - mas só se tiver os dados acima]
 
 ---
 
@@ -188,16 +228,16 @@ Gerar uma resposta em Markdown LIMPO e BEM FORMATADO, seguindo EXATAMENTE a estr
 ## 🎯 Próximos Passos Sugeridos
 
 1. **Legislação:**
-   - Consultar LEP, artigos [X, Y, Z] que tratam de [tema]
-   
+   - Consultar [artigos específicos relevantes ao caso]
+
 2. **Pesquisa Complementar:**
-   - Buscar jurisprudência específica no [TRIBUNAL] sobre "[palavras-chave]"
-   
+   - Buscar jurisprudência sobre [temas relacionados]
+
 3. **Dados do Caso:**
-   - Obter informação sobre [dado específico necessário]
-   
+   - Obter informação sobre [dados que ajudariam na análise]
+
 4. **Documentação:**
-   - Reunir documentos comprobatórios de [requisito específico]
+   - Reunir documentos comprobatórios de [requisitos específicos]
 
 ---
 
@@ -209,16 +249,6 @@ Gerar uma resposta em Markdown LIMPO e BEM FORMATADO, seguindo EXATAMENTE a estr
 - ✓ Recomenda-se consulta aos autos originais e verificação de jurisprudência mais recente
 
 ---
-
-**REGRAS CRÍTICAS:**
-1. Baseie-se APENAS nos documentos fornecidos
-2. NÃO invente números de processos, tribunais, anos ou URLs
-3. Se faltar informação, diga explicitamente o que falta
-4. Mantenha SEMPRE a estrutura das seções conforme descrito acima
-5. Use negrito para destacar pontos críticos e palavras-chave
-6. Seja direto, mas respeitoso e técnico
-7. Quando os documentos NÃO trazem a resposta, seja transparente
-8. A relevância relativa já está calculada - use o valor fornecido
 
 Retorne APENAS o texto em Markdown (sem código markdown com ```):"""
 
@@ -669,10 +699,10 @@ class RagService:
     ) -> str:
         """
         Processa consulta RAG e retorna resposta em Markdown puro (formato UX jurídica).
-        
+
         Este método é otimizado para exibição direta na interface do usuário,
         seguindo as diretrizes de UX jurídica do SEEU.
-        
+
         Fluxo:
         1. Normalização jurídica
         2. Busca vetorial
@@ -680,103 +710,186 @@ class RagService:
         4. Construção do prompt Markdown
         5. Chamada ao LLM
         6. Retorno direto do Markdown gerado
-        
+
         Args:
             request: Request com prompt do usuário e metadados
-            
+
         Returns:
             String em Markdown formatado para operadores do direito
         """
-        log.info(f"Processando consulta RAG (Markdown): {request.promptUsuario[:100]}...")
-        
-        # ETAPA 1: Normalização Jurídica
-        normalizer = get_normalizer()
-        contexto_meta = self._formatar_contexto_metadados(request.metadados)
-        query_normalizada = normalizer.normalizar(
-            prompt_usuario=request.promptUsuario,
-            contexto_adicional=contexto_meta
-        )
-        
-        log.info(f"Query normalizada: {query_normalizada.queryRAG}")
-        
-        # ETAPA 2: Busca Vetorial
-        if not request.useRag:
-            # Modo sem RAG - retorna resposta direta
-            return self._resposta_markdown_sem_rag(request, query_normalizada)
-        
-        chunks_recuperados = self._buscar_chunks(
-            query_normalizada.queryRAG,
-            k=request.k,
-            metadados=request.metadados
-        )
-        
-        if not chunks_recuperados:
-            log.warning("Nenhum chunk recuperado")
-            return self._resposta_markdown_vazia(request, query_normalizada)
-        
-        # ETAPA 3: Calcular Relevância Relativa
-        scores = [c.score for c in chunks_recuperados]
-        relevancia_relativa = calcular_relevancia_relativa(scores)
-        
-        for i, chunk in enumerate(chunks_recuperados):
-            chunk.relevanciaRelativa = round(relevancia_relativa[i], 1)
-        
-        # ETAPA 4: Agrupar por Documento
-        chunks_agrupados = agrupar_chunks_por_documento(chunks_recuperados)
-        
-        log.info(
-            f"Recuperados {len(chunks_recuperados)} chunks de "
-            f"{len(chunks_agrupados)} documentos únicos"
-        )
-        
-        # ETAPA 5: Gerar cabeçalho informativo
-        num_docs = len(chunks_agrupados)
-        cabecalho = f"📚 Consultados {num_docs} documentos jurídicos (RAG/FAISS)\n\n"
-        
-        # ETAPA 6: Montar Prompt Markdown e Chamar LLM
-        resposta_markdown = self._gerar_resposta_markdown_llm(
-            request.promptUsuario,
-            query_normalizada,
-            chunks_agrupados
-        )
-        
-        log.info("Consulta RAG (Markdown) processada com sucesso")
-        return cabecalho + resposta_markdown
+        # Inicializa logger de requisição para observabilidade
+        req_logger = RequestLogger()
+
+        try:
+            log.info(f"Processando consulta RAG (Markdown): {request.promptUsuario[:100]}...")
+
+            # Log da requisição inicial
+            req_logger.log_request(
+                prompt=request.promptUsuario,
+                use_rag=request.useRag,
+                k=request.k,
+                metadados=request.metadados.dict() if request.metadados else {}
+            )
+
+            # Converte histórico para formato dict e loga
+            history_dicts = [{"role": h.role, "content": h.content} for h in request.history] if request.history else []
+            req_logger.log_history(history_dicts)
+
+            # ETAPA 1: Normalização Jurídica
+            normalizer = get_normalizer()
+            contexto_meta = self._formatar_contexto_metadados(request.metadados)
+            query_normalizada = normalizer.normalizar(
+                prompt_usuario=request.promptUsuario,
+                contexto_adicional=contexto_meta
+            )
+
+            log.info(f"Query normalizada: {query_normalizada.queryRAG}")
+            req_logger.log_normalization(query_normalizada.dict())
+
+            # ETAPA 2: Busca Vetorial
+            if not request.useRag:
+                response = self._resposta_markdown_sem_rag(request, query_normalizada)
+                req_logger.log_final_response(response)
+                req_logger.add_metadata("mode", "sem_rag")
+                req_logger.save()
+                return response
+
+            chunks_recuperados = self._buscar_chunks(
+                query_normalizada.queryRAG,
+                k=request.k,
+                metadados=request.metadados
+            )
+
+            if not chunks_recuperados:
+                log.warning("Nenhum chunk recuperado")
+                response = self._resposta_markdown_vazia(request, query_normalizada)
+                req_logger.log_final_response(response)
+                req_logger.add_metadata("no_chunks_found", True)
+                req_logger.save()
+                return response
+
+            # ETAPA 3: Calcular Relevância Relativa
+            scores = [c.score for c in chunks_recuperados]
+            relevancia_relativa = calcular_relevancia_relativa(scores)
+
+            for i, chunk in enumerate(chunks_recuperados):
+                chunk.relevanciaRelativa = round(relevancia_relativa[i], 1)
+
+            # ETAPA 4: Agrupar por Documento
+            chunks_agrupados = agrupar_chunks_por_documento(chunks_recuperados)
+
+            log.info(
+                f"Recuperados {len(chunks_recuperados)} chunks de "
+                f"{len(chunks_agrupados)} documentos únicos"
+            )
+
+            # Log dos documentos recuperados para observabilidade
+            docs_for_log = []
+            for doc_id, chunks in chunks_agrupados.items():
+                meta = chunks[0].metadata
+                docs_for_log.append({
+                    "doc_id": doc_id,
+                    "tribunal": meta.tribunal,
+                    "processo": meta.numeroProcesso,
+                    "relator": meta.relator,
+                    "data": meta.dataJulgamento,
+                    "tema": meta.tema,
+                    "num_chunks": len(chunks),
+                    "relevancia": chunks[0].relevanciaRelativa,
+                    "texto_preview": chunks[0].texto[:300] + "..." if len(chunks[0].texto) > 300 else chunks[0].texto
+                })
+            req_logger.log_retrieved_documents(docs_for_log)
+
+            # ETAPA 5: Gerar cabeçalho informativo
+            num_docs = len(chunks_agrupados)
+            cabecalho = f"📚 Consultados {num_docs} documentos jurídicos (RAG/FAISS)\n\n"
+
+            # ETAPA 6: Montar Prompt Markdown e Chamar LLM
+            resposta_markdown, prompt_enviado = self._gerar_resposta_markdown_llm(
+                request.promptUsuario,
+                query_normalizada,
+                chunks_agrupados,
+                history=history_dicts,
+                return_prompt=True
+            )
+
+            # Log do prompt e resposta do LLM
+            req_logger.log_llm_prompt(prompt_enviado)
+            req_logger.log_llm_response(resposta_markdown)
+
+            final_response = cabecalho + resposta_markdown
+            req_logger.log_final_response(final_response)
+
+            req_logger.add_metadata("num_chunks", len(chunks_recuperados))
+            req_logger.add_metadata("num_docs", num_docs)
+            req_logger.add_metadata("llm_provider", self.provider)
+            req_logger.add_metadata("llm_model", self.model)
+
+            log.info("Consulta RAG (Markdown) processada com sucesso")
+            req_logger.save()
+
+            return final_response
+
+        except Exception as e:
+            req_logger.log_error(str(e), "query_markdown")
+            req_logger.save()
+            raise
     
     def _gerar_resposta_markdown_llm(
         self,
         query_original: str,
         query_normalizada: QueryNormalizadaOutput,
-        chunks_agrupados: Dict[str, List[ChunkWithScore]]
-    ) -> str:
-        """Gera resposta em Markdown usando LLM com template UX jurídica."""
-        
+        chunks_agrupados: Dict[str, List[ChunkWithScore]],
+        history: List[Dict[str, str]] = None,
+        return_prompt: bool = False
+    ):
+        """
+        Gera resposta em Markdown usando LLM com template UX jurídica.
+
+        Args:
+            return_prompt: Se True, retorna tupla (resposta, prompt) para logging
+        """
+
         # Formata dados de execução penal
         dados_exec = query_normalizada.dadosExecucaoPenal
         dados_exec_str = json.dumps(dados_exec.dict(), ensure_ascii=False, indent=2)
-        
+
         # Formata temas e palavras-chave
         temas_str = ", ".join(query_normalizada.temaExecucao) if query_normalizada.temaExecucao else "Nenhum tema específico identificado"
         palavras_str = ", ".join(query_normalizada.palavrasChaveJuridicas) if query_normalizada.palavrasChaveJuridicas else "Nenhuma palavra-chave específica"
-        
+
         # Monta contexto dos documentos
         contexto_docs = montar_contexto_documentos(chunks_agrupados)
-        
+
+        # Formata histórico de conversa
+        historico_str = ""
+        if history and len(history) > 0:
+            historico_str = "**HISTÓRICO DA CONVERSA:**\n"
+            for msg in history:
+                role_label = "Usuário" if msg.get("role") == "user" else "Assistente"
+                content = msg.get("content", "")
+                # Limita tamanho do histórico para não estourar contexto
+                if len(content) > 500:
+                    content = content[:500] + "..."
+                historico_str += f"- **{role_label}:** {content}\n"
+            historico_str += "\n"
+
         # Monta prompt final com template Markdown
         prompt = TEMPLATE_RAG_SEEU_MARKDOWN.format(
             query_original=query_original,
             query_normalizada=query_normalizada.queryRAG,
+            historico_conversa=historico_str,
             dados_execucao=dados_exec_str,
             temas_execucao=temas_str,
             palavras_chave=palavras_str,
             documentos_contexto=contexto_docs
         )
-        
+
         log.debug(f"Prompt Markdown montado ({len(prompt)} chars)")
-        
+
         # Chama LLM e retorna Markdown direto
         resposta_markdown = self._chamar_llm(prompt)
-        
+
         # Remove possíveis markdown fences se o LLM insistir em adicionar
         resposta_limpa = resposta_markdown.strip()
         if resposta_limpa.startswith("```markdown"):
@@ -785,8 +898,12 @@ class RagService:
             resposta_limpa = resposta_limpa[3:]
         if resposta_limpa.endswith("```"):
             resposta_limpa = resposta_limpa[:-3]
-        
-        return resposta_limpa.strip()
+
+        resposta_final = resposta_limpa.strip()
+
+        if return_prompt:
+            return resposta_final, prompt
+        return resposta_final
     
     def _resposta_markdown_sem_rag(
         self,

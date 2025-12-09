@@ -1,5 +1,10 @@
 import { logger } from '../../utils/logger'
 
+interface HistoryMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 interface RagQueryRequest {
   promptUsuario: string
   useRag?: boolean
@@ -10,6 +15,7 @@ interface RagQueryRequest {
     tipoConsulta?: string
   }
   k?: number
+  history?: HistoryMessage[]
 }
 
 export default defineEventHandler(async (event) => {
@@ -21,7 +27,8 @@ export default defineEventHandler(async (event) => {
     logger.info('Received RAG query request', 'DBVECTOR RAG API', {
       promptLength: body.promptUsuario?.length,
       useRag: body.useRag ?? true,
-      k: body.k || 10
+      k: body.k || 10,
+      historyLength: body.history?.length || 0
     })
     
     if (!body.promptUsuario || !body.promptUsuario.trim()) {
@@ -52,7 +59,8 @@ export default defineEventHandler(async (event) => {
         promptUsuario: body.promptUsuario,
         useRag: body.useRag ?? true,
         metadados: body.metadados || {},
-        k: body.k || 10
+        k: body.k || 10,
+        history: body.history || []
       }
     })
 

@@ -1,15 +1,23 @@
 import { logger } from '../../utils/logger'
 
+interface HistoryMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
-  
+
   try {
     const body = await readBody(event)
-    logger.info('Received OpenAI chat request', 'OpenAI API', { 
+    const history: HistoryMessage[] = body.history || []
+
+    logger.info('Received OpenAI chat request', 'OpenAI API', {
       model: body.model,
-      promptLength: body.prompt?.length 
+      promptLength: body.prompt?.length,
+      historyLength: history.length
     })
-    
+
     if (!body.prompt) {
       logger.warn('Request without prompt', 'OpenAI API')
       throw createError({
@@ -18,9 +26,9 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    const modelName = body.model || 'gpt-5-mini'
+    const modelName = body.model || 'gpt-5'
     const isReasoningModel = modelName.includes('o1') || modelName.includes('gpt-5')
-    
+
     logger.debug('Sending request to OpenAI', 'OpenAI API', {
       model: modelName,
       isReasoningModel,
@@ -28,15 +36,53 @@ export default defineEventHandler(async (event) => {
       max_completion_tokens: 10000
     })
 
+    // System prompt para modo Chat Simples - assistente de jurisprudência brasileira
+    const systemPrompt = `Você é um assistente jurídico especializado em direito brasileiro.
+Seu papel é auxiliar com questões relacionadas à legislação brasileira amplamente conhecida, incluindo:
+- Constituição Federal
+- Código Civil
+- Código Penal
+- Código de Processo Civil
+- Código de Processo Penal
+- Código de Defesa do Consumidor
+- Consolidação das Leis do Trabalho (CLT)
+- Código Tributário Nacional
+- E outras leis federais de conhecimento público
+
+Responda de forma clara, objetiva e didática. Quando apropriado, cite artigos e dispositivos legais relevantes.
+Lembre-se: você está fornecendo informações educativas, não aconselhamento jurídico profissional.
+Sempre recomende que o usuário consulte um advogado para casos específicos.`
+
+    // Build messages array with history
+    let messages: Array<{ role: string, content: string }> = []
+
+    // Modelos de reasoning (o1, gpt-5) não suportam role 'system'
+    if (isReasoningModel) {
+      // For reasoning models, include system prompt in first user message
+      if (history.length > 0) {
+        // Include history with system context in first message
+        const firstUserContent = `${systemPrompt}\n\n---\n\nHistórico da conversa:\n${history.map(h => `${h.role === 'user' ? 'Usuário' : 'Assistente'}: ${h.content}`).join('\n\n')}\n\n---\n\nPergunta atual do usuário: ${body.prompt}`
+        messages = [{ role: 'user', content: firstUserContent }]
+      } else {
+        messages = [{ role: 'user', content: `${systemPrompt}\n\n---\n\nPergunta do usuário: ${body.prompt}` }]
+      }
+    } else {
+      // For regular models, use system message + history + current prompt
+      messages = [{ role: 'system', content: systemPrompt }]
+
+      // Add conversation history
+      for (const msg of history) {
+        messages.push({ role: msg.role, content: msg.content })
+      }
+
+      // Add current user message
+      messages.push({ role: 'user', content: body.prompt })
+    }
+
     // Configuração base para a API de chat completions
     const requestBody: any = {
       model: modelName,
-      messages: [
-        {
-          role: 'user',
-          content: body.prompt
-        }
-      ],
+      messages,
       max_completion_tokens: 10000
     }
 

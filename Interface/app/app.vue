@@ -10,8 +10,6 @@ onMounted(() => {
 
 logger.info('Application started', 'App')
 
-logger.info('Application started', 'App')
-
 const color = computed(() => colorMode.value === 'dark' ? '#1b1718' : 'white')
 
 // Log color mode changes
