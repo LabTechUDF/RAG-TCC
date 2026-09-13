@@ -1,0 +1,12 @@
+[
+  {"code": "CF/88", "name": "Constituição Federal de 1988", "url": "https://www.planalto.gov.br/ccivil_03/constituicao/constituicao.htm", "adct_code": "ADCT"},
+  {"code": "CC", "name": "Código Civil (Lei 10.406/2002)", "url": "https://www.planalto.gov.br/ccivil_03/leis/2002/l10406compilada.htm"},
+  {"code": "CP", "name": "Código Penal (Decreto-Lei 2.848/1940)", "url": "https://www.planalto.gov.br/ccivil_03/decreto-lei/del2848compilado.htm"},
+  {"code": "CPC", "name": "Código de Processo Civil (Lei 13.105/2015)", "url": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13105.htm"},
+  {"code": "CPP", "name": "Código de Processo Penal (Decreto-Lei 3.689/1941)", "url": "https://www.planalto.gov.br/ccivil_03/decreto-lei/del3689compilado.htm"},
+  {"code": "CDC", "name": "Código de Defesa do Consumidor (Lei 8.078/1990)", "url": "https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm"},
+  {"code": "ECA", "name": "Estatuto da Criança e do Adolescente (Lei 8.069/1990)", "url": "https://www.planalto.gov.br/ccivil_03/leis/l8069.htm"},
+  {"code": "LGPD", "name": "Lei Geral de Proteção de Dados Pessoais (Lei 13.709/2018)", "url": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/L13709compilado.htm"},
+  {"code": "Lei 4.591/64", "name": "Lei de Condomínios e Incorporações (Lei 4.591/1964)", "url": "https://www.planalto.gov.br/ccivil_03/leis/l4591compilado.htm"},
+  {"code": "LEP", "name": "Lei de Execução Penal (Lei 7.210/1984)", "url": "https://www.planalto.gov.br/ccivil_03/leis/l7210.htm"}
+]

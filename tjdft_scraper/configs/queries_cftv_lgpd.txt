@@ -1,0 +1,45 @@
+# tema|query
+# Sintaxe do jurisdf: palavras soltas são combinadas com E (com sinônimos/radicais),
+# "aspas" = frase exata, conectivos: e, ou, não, PROX5 (até 5 palavras, qualquer ordem), parênteses.
+# PROX com grupos entre parênteses causa HTTP 500 na API; use PROX só entre palavras simples.
+# Consultas amplas (LGPD/CFTV) usam frase exata: sem aspas trazem milhares de resultados sem relação.
+
+# LGPD / proteção de dados
+lgpd|lgpd
+lgpd|"lei geral de proteção de dados"
+lgpd|"lei 13.709"
+lgpd|"vazamento de dados pessoais"
+lgpd|lgpd e condomínio
+lgpd|"dados pessoais" e condomínio
+lgpd|lgpd e (câmera ou câmeras ou imagens ou videomonitoramento)
+lgpd|"proteção de dados" e (câmera ou câmeras ou imagens)
+
+# CFTV / monitoramento por câmeras
+cftv|cftv
+cftv|"circuito fechado de televisão"
+cftv|videomonitoramento
+cftv|"câmera de segurança"
+cftv|"câmeras de segurança"
+cftv|"câmeras de vigilância"
+cftv|"gravação de imagens"
+cftv|"imagens de câmera"
+
+# Câmeras privadas instaladas por moradores em condomínios
+condominio_cameras|(câmera ou câmeras ou cftv ou filmagem ou videomonitoramento) e condomínio e (vizinho ou morador ou condômino)
+condominio_cameras|(câmera ou câmeras) e (privacidade ou intimidade) e condomínio
+condominio_cameras|(câmera ou câmeras) e condomínio e (retirada ou remoção ou instalação)
+condominio_cameras|(câmera ou câmeras) e "direito de vizinhança"
+condominio_cameras|(câmera ou câmeras) e "uso anormal da propriedade"
+condominio_cameras|"direito de imagem" e (câmera ou câmeras) e condomínio
+condominio_cameras|câmera PROX5 vizinho
+condominio_cameras|câmeras PROX5 vizinho
+condominio_cameras|câmera condomínio morador
+condominio_cameras|câmera instalada unidade condominial
+condominio_cameras|câmera voltada para área comum
+condominio_cameras|câmera apontada vizinho
+condominio_cameras|direito de vizinhança câmera
+condominio_cameras|direito de imagem câmera condomínio
+condominio_cameras|privacidade câmera vizinho
+condominio_cameras|retirada de câmera condomínio
+condominio_cameras|exibição de imagens condomínio
+condominio_cameras|convenção condominial câmeras

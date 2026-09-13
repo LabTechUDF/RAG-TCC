@@ -137,6 +137,7 @@ dmypy.json
 
 # Arquivos de dados locais
 data/indexes/faiss/*
+data/indexes/faiss_backup*/
 data/indexes/opensearch/*
 !data/indexes/faiss/.gitkeep
 !data/indexes/opensearch/.gitkeep
