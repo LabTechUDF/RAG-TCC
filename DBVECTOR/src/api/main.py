@@ -7,9 +7,12 @@ from pathlib import Path
 # Adiciona src ao path para imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+import hmac
+import os
 from typing import Optional
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from src.storage.factory import get_store, get_faiss_store
@@ -26,7 +29,9 @@ from src.rag_service import RagService
 class SearchRequest(BaseModel):
     # exige string não vazia
     q: str = Field(..., min_length=1, description="Texto da consulta jurídica")
-    k: int = Field(5, ge=1, le=20, description="Número de resultados (1-20)")
+    k: int = Field(5, ge=1, le=100, description="Número de resultados (1-100)")
+    id_prefix: Optional[str] = Field(None, description="Restringe a ids com esse prefixo, ex.: lei:lgpd, tjdft:")
+    court: Optional[str] = Field(None, description="Restringe a um tribunal, ex.: TJDFT, STJ")
 
 
 class SearchResultAPI(BaseModel):
@@ -65,6 +70,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Autenticação opcional por token: ativa quando API_AUTH_TOKEN está definido.
+# Aceita "Authorization: Bearer <token>" ou "X-API-Key: <token>".
+API_AUTH_TOKEN = os.getenv("API_AUTH_TOKEN", "")
+PUBLIC_PATHS = {"/", "/health", "/docs", "/openapi.json"}
+
+
+@app.middleware("http")
+async def require_token(request: Request, call_next):
+    if API_AUTH_TOKEN and request.method != "OPTIONS" and request.url.path not in PUBLIC_PATHS:
+        auth = request.headers.get("authorization", "")
+        token = auth[7:] if auth.lower().startswith("bearer ") else request.headers.get("x-api-key", "")
+        if not hmac.compare_digest(token.encode(), API_AUTH_TOKEN.encode()):
+            return JSONResponse(status_code=401, content={"detail": "Token inválido ou ausente"})
+    return await call_next(request)
 
 # Store e RagService globais (inicializados no startup)
 store = None
@@ -170,12 +190,19 @@ async def search_documents(request: SearchRequest):
             detail=f"Nenhum documento indexado. Execute pipeline de build para {config.SEARCH_BACKEND}"
         )
     
+    filtered = bool(request.id_prefix or request.court)
+    if filtered and not isinstance(store, FAISSStore):
+        raise HTTPException(status_code=501, detail=f"Filtros id_prefix/court não suportados no backend {config.SEARCH_BACKEND}")
+
     try:
         # Gera embedding da query
         query_vector = embeddings.encode_single_text(request.q)
-        
+
         # Busca documentos usando store global
-        results = store.search(query_vector, k=request.k)
+        if filtered:
+            results = store.search(query_vector, k=request.k, id_prefix=request.id_prefix, court=request.court)
+        else:
+            results = store.search(query_vector, k=request.k)
 
         # Converte para modelo API
         api_results = []
@@ -330,6 +357,93 @@ async def rag_query_markdown(request: RagQueryRequest):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+
+@app.get("/doc/{doc_id:path}")
+def get_document(doc_id: str):
+    """Documento indexado completo (texto e metadados) pelo id, ex.: lei:cf-88:art-5, tjdft:<uuid>."""
+    if store is None:
+        raise HTTPException(status_code=503, detail="Store não inicializado")
+    if not hasattr(store, "get_by_id"):
+        raise HTTPException(status_code=501, detail=f"Backend {config.SEARCH_BACKEND} não suporta busca por id")
+    record = store.get_by_id(doc_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"Documento não encontrado: {doc_id}")
+    record.pop("internal_id", None)
+    return record
+
+
+# ---------------------------------------------------------------- STJ (dados abertos, busca local)
+# Índice SQLite FTS5 montado por `stj_scraper/manage.py open-data build` (íntegras 2021+, espelhos 2022+).
+REPO_ROOT = Path(__file__).resolve().parents[3]
+STJ_OPEN_DATA_DB = Path(os.getenv("STJ_OPEN_DATA_DB", str(REPO_ROOT / "stj_scraper" / "data" / "open_data" / "stj_open_data.sqlite")))
+
+
+class StjSearchRequest(BaseModel):
+    q: str = Field(..., min_length=1, description='Termos (FTS5: "frase", OR, NOT, NEAR, prefixo*); acentos ignorados')
+    scope: str = Field("all", pattern="^(all|espelhos|integras)$", description="espelhos (ementas 2022+), integras (textos 2021+) ou all")
+    limit: int = Field(10, ge=1, le=50)
+    tipo: Optional[str] = Field(None, description="ACÓRDÃO ou DECISÃO")
+    desde: Optional[str] = Field(None, description="YYYY-MM-DD")
+    ate: Optional[str] = Field(None, description="YYYY-MM-DD")
+    ministro: Optional[str] = Field(None, description="Relator/ministro (parte do nome)")
+    orgao: Optional[str] = Field(None, description="Órgão julgador (espelhos)")
+    classe: Optional[str] = Field(None, description="Classe, ex.: REsp, AREsp")
+
+
+def _stj_search_module():
+    if not STJ_OPEN_DATA_DB.exists():
+        raise HTTPException(status_code=503, detail=f"Índice do STJ não encontrado ({STJ_OPEN_DATA_DB}); rode open-data sync/build")
+    stj_root = str(REPO_ROOT / "stj_scraper")
+    if stj_root not in sys.path:
+        sys.path.insert(0, stj_root)
+    from stj_scraper.open_data import search as stj_search
+    return stj_search
+
+
+@app.post("/stj/search")
+def stj_search_endpoint(request: StjSearchRequest):
+    """Busca qualquer termo nos dados abertos do STJ (espelhos de acórdãos e íntegras)."""
+    stj_search = _stj_search_module()
+    try:
+        return stj_search.search(STJ_OPEN_DATA_DB, request.q, scope=request.scope, limit=request.limit,
+                                 tipo=request.tipo, desde=request.desde, ate=request.ate, ministro=request.ministro,
+                                 orgao=request.orgao, classe=request.classe)
+    except Exception as e:  # sintaxe FTS5 inválida, por exemplo
+        raise HTTPException(status_code=422, detail=f"Consulta inválida: {e}")
+
+
+@app.get("/stj/text/{seq}")
+def stj_text_endpoint(seq: int):
+    """Texto integral de uma íntegra do STJ pelo SeqDocumento."""
+    doc = _stj_search_module().get_text(STJ_OPEN_DATA_DB, seq)
+    if not doc:
+        raise HTTPException(status_code=404, detail="SeqDocumento não encontrado")
+    return doc
+
+
+@app.get("/stj/espelho/{espelho_id}")
+def stj_espelho_endpoint(espelho_id: int):
+    """Espelho completo (ementa, decisão, legislação, precedentes citados...) pelo id de stj:espelho:<id>."""
+    docs = _stj_search_module().get_espelhos(STJ_OPEN_DATA_DB, espelho_id=espelho_id)
+    if not docs:
+        raise HTTPException(status_code=404, detail="Espelho não encontrado")
+    return docs[0]
+
+
+@app.get("/stj/espelho")
+def stj_espelho_by_processo_endpoint(processo: str):
+    """Espelhos completos por processo, ex.: ?processo=REsp 1921653 (pode haver mais de um: embargos, agravos)."""
+    docs = _stj_search_module().get_espelhos(STJ_OPEN_DATA_DB, processo=processo)
+    if not docs:
+        raise HTTPException(status_code=404, detail="Nenhum espelho para esse processo (espelhos cobrem acórdãos publicados de 2022 em diante)")
+    return {"processo": processo, "total": len(docs), "espelhos": docs}
+
+
+@app.get("/stj/status")
+def stj_status_endpoint():
+    """Contagens e períodos do índice local do STJ."""
+    return _stj_search_module().status(STJ_OPEN_DATA_DB)
 
 
 if __name__ == "__main__":
