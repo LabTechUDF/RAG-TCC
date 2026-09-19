@@ -1,0 +1,5 @@
+# Dados abertos do STJ baixados/processados (vários GB) — nunca versionar
+data/open_data/
+# Perfil do navegador e downloads do SCON (sessão verificada por uma pessoa)
+data/scon/
+logs/
