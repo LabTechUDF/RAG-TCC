@@ -1,0 +1,184 @@
+{
+  "written_now": 7,
+  "written_total": 720,
+  "pending": 0,
+  "failed": [],
+  "empty_content": 0,
+  "full_text_missing": 0,
+  "pdfs_downloaded": 0,
+  "queries": [
+    {
+      "topic": "condominio_fachada",
+      "query": "\"alteração de fachada\" e condomínio",
+      "hits": 91,
+      "pages": 3,
+      "collected": 90,
+      "segredo_skipped": 1,
+      "done": true
+    },
+    {
+      "topic": "condominio_fachada",
+      "query": "(câmera ou câmeras) e fachada e condomínio",
+      "hits": 4,
+      "pages": 1,
+      "collected": 4,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_multa",
+      "query": "\"multa condominial\" e (\"direito de defesa\" ou contraditório ou notificação)",
+      "hits": 64,
+      "pages": 2,
+      "collected": 64,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_multa",
+      "query": "\"multa condominial\" e (locatário ou inquilino) e proprietário",
+      "hits": 4,
+      "pages": 1,
+      "collected": 4,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_multa",
+      "query": "\"art. 1.337\" e condomínio",
+      "hits": 117,
+      "pages": 3,
+      "collected": 114,
+      "segredo_skipped": 3,
+      "done": true
+    },
+    {
+      "topic": "condominio_multa",
+      "query": "(câmera ou câmeras) e condomínio e multa",
+      "hits": 72,
+      "pages": 2,
+      "collected": 72,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_multa",
+      "query": "\"multa condominial\" e \"ampla defesa\"",
+      "hits": 48,
+      "pages": 2,
+      "collected": 48,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_multa_tipicidade",
+      "query": "\"multa condominial\" e (tipicidade ou \"previsão expressa\" ou \"sem previsão\")",
+      "hits": 5,
+      "pages": 1,
+      "collected": 5,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_multa_tipicidade",
+      "query": "\"multa\" e condomínio e \"regimento interno\" e (\"previsão expressa\" ou tipicidade)",
+      "hits": 26,
+      "pages": 1,
+      "collected": 26,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_multa_tipicidade",
+      "query": "\"multa condominial\" e \"princípio da legalidade\"",
+      "hits": 1,
+      "pages": 1,
+      "collected": 1,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_multa_notificacao",
+      "query": "\"multa condominial\" e notificação e proprietário",
+      "hits": 4,
+      "pages": 1,
+      "collected": 4,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_multa_notificacao",
+      "query": "multa e condomínio e \"notificação prévia\"",
+      "hits": 89,
+      "pages": 3,
+      "collected": 89,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_multa_notificacao",
+      "query": "\"multa condominial\" e (\"notificação do proprietário\" ou \"proprietário da unidade\")",
+      "hits": 1,
+      "pages": 1,
+      "collected": 1,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_camera_area_privativa",
+      "query": "(câmera ou câmeras) e condomínio e (muro ou cobertura)",
+      "hits": 21,
+      "pages": 1,
+      "collected": 21,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_camera_area_privativa",
+      "query": "câmera condomínio térreo",
+      "hits": 0,
+      "pages": 0,
+      "collected": 0,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_camera_area_privativa",
+      "query": "câmera condomínio área privativa",
+      "hits": 3,
+      "pages": 1,
+      "collected": 3,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "exercicio_regular_direito_camera",
+      "query": "\"exercício regular de direito\" e (câmera ou câmeras)",
+      "hits": 15,
+      "pages": 1,
+      "collected": 14,
+      "segredo_skipped": 1,
+      "done": true
+    },
+    {
+      "topic": "condominio_orgaos",
+      "query": "\"conselho consultivo\" e condomínio",
+      "hits": 256,
+      "pages": 7,
+      "collected": 256,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_multa_notificacao",
+      "query": "multa e condomínio e (locatário ou inquilino) e proprietário e notificação",
+      "hits": 18,
+      "pages": 1,
+      "collected": 18,
+      "segredo_skipped": 0,
+      "done": true
+    }
+  ],
+  "unique_records": 720,
+  "generated_at": "2026-09-13T02:40:15+00:00"
+}
