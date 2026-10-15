@@ -1,0 +1,33 @@
+# tema|query — lacunas pedidas pelo agente juridico (2026-09-13): multa condominial, fachada, locatário × proprietário,
+# câmera em área privativa externa, exercício regular de direito. Complementa queries_cftv_lgpd.txt;
+# saída separada (data/tjdft_condo_multa.jsonl).
+
+condominio_fachada|"alteração de fachada" e condomínio
+condominio_fachada|(câmera ou câmeras) e fachada e condomínio
+
+condominio_multa|"multa condominial" e ("direito de defesa" ou contraditório ou notificação)
+condominio_multa|"multa condominial" e (locatário ou inquilino) e proprietário
+condominio_multa|"art. 1.337" e condomínio
+condominio_multa|(câmera ou câmeras) e condomínio e multa
+condominio_multa|"multa condominial" e "ampla defesa"
+
+# multa sem previsão expressa / tipicidade no regimento
+condominio_multa_tipicidade|"multa condominial" e (tipicidade ou "previsão expressa" ou "sem previsão")
+condominio_multa_tipicidade|"multa" e condomínio e "regimento interno" e ("previsão expressa" ou tipicidade)
+condominio_multa_tipicidade|"multa condominial" e "princípio da legalidade"
+
+# notificação do proprietário (não do locatário) antes da multa
+condominio_multa_notificacao|"multa condominial" e notificação e proprietário
+condominio_multa_notificacao|multa e condomínio e "notificação prévia"
+condominio_multa_notificacao|"multa condominial" e ("notificação do proprietário" ou "proprietário da unidade")
+condominio_multa_notificacao|multa e condomínio e (locatário ou inquilino) e proprietário e notificação
+
+# câmera em área externa privativa de unidade térrea (muro/cobertura)
+condominio_camera_area_privativa|(câmera ou câmeras) e condomínio e (muro ou cobertura)
+condominio_camera_area_privativa|câmera condomínio térreo
+condominio_camera_area_privativa|câmera condomínio área privativa
+
+# exercício regular de direito + câmera
+exercicio_regular_direito_camera|"exercício regular de direito" e (câmera ou câmeras)
+
+condominio_orgaos|"conselho consultivo" e condomínio

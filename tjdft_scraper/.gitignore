@@ -1,0 +1,4 @@
+logs/
+data/pdf/
+data/*.tmp
+data/*_search_index.json

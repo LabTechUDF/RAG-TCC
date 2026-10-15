@@ -62,7 +62,8 @@ def validate_dataset(
     docs: List[Dict[str, Any]],
     min_chars: int = 200,
     required_fields: List[str] = None,
-    text_field: str = "content"
+    text_field: str = "content",
+    id_field: str = "case_number"
 ) -> Dict[str, Any]:
     """
     Valida dataset completo e retorna métricas de qualidade.
@@ -104,8 +105,8 @@ def validate_dataset(
         if check_missing_fields(doc, required_fields):
             missing_fields_count += 1
         
-        # ID para duplicatas (tenta case_number primeiro, depois id)
-        doc_id = doc.get("case_number") or doc.get("id")
+        # ID para duplicatas (tenta id_field primeiro, depois id)
+        doc_id = doc.get(id_field) or doc.get("id")
         if doc_id:
             ids.append(doc_id)
         
@@ -148,7 +149,7 @@ def validate_dataset(
         if id_counts[doc_id] > 1:
             # Marca todos os docs com esse ID como problemáticos
             for i, doc in enumerate(docs):
-                id_candidate = doc.get("case_number") or doc.get("id")
+                id_candidate = doc.get(id_field) or doc.get("id")
                 if id_candidate == doc_id:
                     problem_docs.add(i)
     
@@ -207,6 +208,12 @@ def main():
         default="content",
         help="Nome do campo de texto principal (default: content)"
     )
+    parser.add_argument(
+        "--id-field",
+        type=str,
+        default="case_number",
+        help="Campo usado para detectar duplicatas (default: case_number; use id quando um processo tem várias decisões)"
+    )
     
     args = parser.parse_args()
     
@@ -234,7 +241,8 @@ def main():
         docs,
         min_chars=args.min_chars,
         required_fields=args.required_fields,
-        text_field=args.text_field
+        text_field=args.text_field,
+        id_field=args.id_field
     )
     
     # Verifica threshold

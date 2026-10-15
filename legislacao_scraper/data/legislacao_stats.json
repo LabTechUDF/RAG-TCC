@@ -1,0 +1,95 @@
+{
+  "generated_at": "2026-09-12T22:46:01+00:00",
+  "laws": {
+    "CF/88": {
+      "struck_removed": 780,
+      "struck_unwrapped": 0,
+      "continuations_out_of_order": 1,
+      "articles": 411,
+      "revoked_skipped": 0,
+      "records": 687,
+      "duplicate_ids": 0
+    },
+    "CC": {
+      "struck_removed": 2,
+      "struck_unwrapped": 0,
+      "continuations_out_of_order": 0,
+      "articles": 2018,
+      "revoked_skipped": 65,
+      "records": 2033,
+      "duplicate_ids": 0
+    },
+    "CP": {
+      "struck_removed": 6,
+      "struck_unwrapped": 0,
+      "continuations_out_of_order": 2,
+      "articles": 417,
+      "revoked_skipped": 10,
+      "records": 444,
+      "duplicate_ids": 0
+    },
+    "CPC": {
+      "struck_removed": 79,
+      "struck_unwrapped": 0,
+      "continuations_out_of_order": 0,
+      "articles": 1070,
+      "revoked_skipped": 3,
+      "records": 1147,
+      "duplicate_ids": 0
+    },
+    "CPP": {
+      "struck_removed": 29,
+      "struck_unwrapped": 0,
+      "continuations_out_of_order": 0,
+      "articles": 811,
+      "revoked_skipped": 35,
+      "records": 849,
+      "duplicate_ids": 0
+    },
+    "CDC": {
+      "struck_removed": 2,
+      "struck_unwrapped": 0,
+      "continuations_out_of_order": 0,
+      "articles": 118,
+      "revoked_skipped": 12,
+      "records": 134,
+      "duplicate_ids": 0
+    },
+    "ECA": {
+      "struck_removed": 262,
+      "struck_unwrapped": 0,
+      "continuations_out_of_order": 0,
+      "articles": 327,
+      "revoked_skipped": 0,
+      "records": 383,
+      "duplicate_ids": 0
+    },
+    "LGPD": {
+      "struck_removed": 0,
+      "struck_unwrapped": 0,
+      "continuations_out_of_order": 1,
+      "articles": 74,
+      "revoked_skipped": 5,
+      "records": 100,
+      "duplicate_ids": 0
+    },
+    "Lei 4.591/64": {
+      "struck_removed": 1,
+      "struck_unwrapped": 0,
+      "continuations_out_of_order": 0,
+      "articles": 85,
+      "revoked_skipped": 1,
+      "records": 129,
+      "duplicate_ids": 0
+    },
+    "LEP": {
+      "struck_removed": 89,
+      "struck_unwrapped": 0,
+      "continuations_out_of_order": 2,
+      "articles": 214,
+      "revoked_skipped": 2,
+      "records": 229,
+      "duplicate_ids": 0
+    }
+  }
+}

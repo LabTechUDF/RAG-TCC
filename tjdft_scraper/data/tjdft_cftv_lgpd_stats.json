@@ -1,0 +1,319 @@
+{
+  "written_now": 3925,
+  "written_total": 3925,
+  "pending": 0,
+  "failed": [],
+  "empty_content": 0,
+  "full_text_missing": 0,
+  "pdfs_downloaded": 0,
+  "queries": [
+    {
+      "topic": "lgpd",
+      "query": "lgpd",
+      "hits": 822,
+      "pages": 21,
+      "collected": 805,
+      "segredo_skipped": 17,
+      "done": true
+    },
+    {
+      "topic": "lgpd",
+      "query": "\"lei geral de proteção de dados\"",
+      "hits": 876,
+      "pages": 22,
+      "collected": 867,
+      "segredo_skipped": 9,
+      "done": true
+    },
+    {
+      "topic": "lgpd",
+      "query": "\"lei 13.709\"",
+      "hits": 367,
+      "pages": 10,
+      "collected": 363,
+      "segredo_skipped": 4,
+      "done": true
+    },
+    {
+      "topic": "lgpd",
+      "query": "\"vazamento de dados pessoais\"",
+      "hits": 193,
+      "pages": 5,
+      "collected": 193,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "lgpd",
+      "query": "lgpd e condomínio",
+      "hits": 33,
+      "pages": 1,
+      "collected": 33,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "lgpd",
+      "query": "\"dados pessoais\" e condomínio",
+      "hits": 95,
+      "pages": 3,
+      "collected": 95,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "lgpd",
+      "query": "lgpd e (câmera ou câmeras ou imagens ou videomonitoramento)",
+      "hits": 10,
+      "pages": 1,
+      "collected": 10,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "lgpd",
+      "query": "\"proteção de dados\" e (câmera ou câmeras ou imagens)",
+      "hits": 12,
+      "pages": 1,
+      "collected": 12,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "cftv",
+      "query": "cftv",
+      "hits": 114,
+      "pages": 3,
+      "collected": 111,
+      "segredo_skipped": 3,
+      "done": true
+    },
+    {
+      "topic": "cftv",
+      "query": "\"circuito fechado de televisão\"",
+      "hits": 19,
+      "pages": 1,
+      "collected": 19,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "cftv",
+      "query": "videomonitoramento",
+      "hits": 83,
+      "pages": 3,
+      "collected": 80,
+      "segredo_skipped": 3,
+      "done": true
+    },
+    {
+      "topic": "cftv",
+      "query": "\"câmera de segurança\"",
+      "hits": 472,
+      "pages": 12,
+      "collected": 453,
+      "segredo_skipped": 19,
+      "done": true
+    },
+    {
+      "topic": "cftv",
+      "query": "\"câmeras de segurança\"",
+      "hits": 1776,
+      "pages": 45,
+      "collected": 1702,
+      "segredo_skipped": 74,
+      "done": true
+    },
+    {
+      "topic": "cftv",
+      "query": "\"câmeras de vigilância\"",
+      "hits": 205,
+      "pages": 6,
+      "collected": 199,
+      "segredo_skipped": 6,
+      "done": true
+    },
+    {
+      "topic": "cftv",
+      "query": "\"gravação de imagens\"",
+      "hits": 22,
+      "pages": 1,
+      "collected": 21,
+      "segredo_skipped": 1,
+      "done": true
+    },
+    {
+      "topic": "cftv",
+      "query": "\"imagens de câmera\"",
+      "hits": 118,
+      "pages": 3,
+      "collected": 114,
+      "segredo_skipped": 4,
+      "done": true
+    },
+    {
+      "topic": "condominio_cameras",
+      "query": "(câmera ou câmeras ou cftv ou filmagem ou videomonitoramento) e condomínio e (vizinho ou morador ou condômino)",
+      "hits": 62,
+      "pages": 2,
+      "collected": 62,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_cameras",
+      "query": "(câmera ou câmeras) e (privacidade ou intimidade) e condomínio",
+      "hits": 49,
+      "pages": 2,
+      "collected": 49,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_cameras",
+      "query": "(câmera ou câmeras) e condomínio e (retirada ou remoção ou instalação)",
+      "hits": 38,
+      "pages": 1,
+      "collected": 38,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_cameras",
+      "query": "(câmera ou câmeras) e \"direito de vizinhança\"",
+      "hits": 26,
+      "pages": 1,
+      "collected": 26,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_cameras",
+      "query": "(câmera ou câmeras) e \"uso anormal da propriedade\"",
+      "hits": 3,
+      "pages": 1,
+      "collected": 3,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_cameras",
+      "query": "\"direito de imagem\" e (câmera ou câmeras) e condomínio",
+      "hits": 1,
+      "pages": 1,
+      "collected": 1,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_cameras",
+      "query": "câmera PROX5 vizinho",
+      "hits": 8,
+      "pages": 1,
+      "collected": 8,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_cameras",
+      "query": "câmeras PROX5 vizinho",
+      "hits": 11,
+      "pages": 1,
+      "collected": 11,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_cameras",
+      "query": "câmera condomínio morador",
+      "hits": 14,
+      "pages": 1,
+      "collected": 14,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_cameras",
+      "query": "câmera instalada unidade condominial",
+      "hits": 2,
+      "pages": 1,
+      "collected": 2,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_cameras",
+      "query": "câmera voltada para área comum",
+      "hits": 5,
+      "pages": 1,
+      "collected": 5,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_cameras",
+      "query": "câmera apontada vizinho",
+      "hits": 1,
+      "pages": 1,
+      "collected": 1,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_cameras",
+      "query": "direito de vizinhança câmera",
+      "hits": 23,
+      "pages": 1,
+      "collected": 23,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_cameras",
+      "query": "direito de imagem câmera condomínio",
+      "hits": 11,
+      "pages": 1,
+      "collected": 11,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_cameras",
+      "query": "privacidade câmera vizinho",
+      "hits": 7,
+      "pages": 1,
+      "collected": 7,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_cameras",
+      "query": "retirada de câmera condomínio",
+      "hits": 14,
+      "pages": 1,
+      "collected": 14,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_cameras",
+      "query": "exibição de imagens condomínio",
+      "hits": 41,
+      "pages": 2,
+      "collected": 41,
+      "segredo_skipped": 0,
+      "done": true
+    },
+    {
+      "topic": "condominio_cameras",
+      "query": "convenção condominial câmeras",
+      "hits": 35,
+      "pages": 1,
+      "collected": 35,
+      "segredo_skipped": 0,
+      "done": true
+    }
+  ],
+  "unique_records": 3925,
+  "generated_at": "2026-09-13T00:13:16+00:00"
+}
