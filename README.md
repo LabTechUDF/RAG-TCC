@@ -92,3 +92,9 @@ stf_scraper/
 ✅ **Production-Ready**: No development modes, clean production focus  
 ✅ **Organized Output**: Data organized by article number automatically  
 ✅ **Resume Support**: Can resume interrupted processing from queue state
+
+## 📦 Archived data
+
+The scraped data (TJDFT, Planalto legislation, STF, STJ SCON, juridico exports; about 30 MB compressed) is archived as a release in the private repository [danrleypereira/rag-tcc-archive](https://github.com/danrleypereira/rag-tcc-archive/releases/tag/data-2026-10-15). Check the files against `SHA256SUMS` and unpack each one at the repository root (`tar -I zstd -xf <file>`; the exports archive goes next to the repo as `~/rag-tcc-exports/`).
+
+Not archived, because it can be re-created: the STJ open-data SQLite (26 GB, download it again from STJ) and the FAISS indexes (16 GB, rebuild them with `DBVECTOR`).
