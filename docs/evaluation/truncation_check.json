@@ -1,0 +1,97 @@
+{
+ "rows_by_kind": {
+  "stj(hex id)": 724375,
+  "lei": 6135,
+  "tjdft": 4566
+ },
+ "models": {
+  "sentence-transformers/all-MiniLM-L6-v2": {
+   "max_seq_length": 256,
+   "kinds": {
+    "stj(hex id)": {
+     "n": 1651,
+     "pct_over_limit": 99.4,
+     "model_tok_p50": 2172,
+     "model_tok_p95": 7649,
+     "cl100k_p50": 1978,
+     "cl100k_p95": 6850,
+     "chars_p50": 6195,
+     "chars_p95": 21631,
+     "mean_pct_of_text_embedded": 15.2,
+     "model_per_cl100k": 1.1,
+     "chars_per_cl100k": 3.15
+    },
+    "lei": {
+     "n": 400,
+     "pct_over_limit": 33.0,
+     "model_tok_p50": 164,
+     "model_tok_p95": 449,
+     "cl100k_p50": 149,
+     "cl100k_p95": 388,
+     "chars_p50": 469,
+     "chars_p95": 1311,
+     "mean_pct_of_text_embedded": 90.1,
+     "model_per_cl100k": 1.13,
+     "chars_per_cl100k": 3.22
+    },
+    "tjdft": {
+     "n": 807,
+     "pct_over_limit": 99.8,
+     "model_tok_p50": 4325,
+     "model_tok_p95": 16691,
+     "cl100k_p50": 3777,
+     "cl100k_p95": 14585,
+     "chars_p50": 12294,
+     "chars_p95": 47677,
+     "mean_pct_of_text_embedded": 7.8,
+     "model_per_cl100k": 1.14,
+     "chars_per_cl100k": 3.25
+    }
+   }
+  },
+  "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": {
+   "max_seq_length": 128,
+   "kinds": {
+    "stj(hex id)": {
+     "n": 1651,
+     "pct_over_limit": 99.8,
+     "model_tok_p50": 1688,
+     "model_tok_p95": 5782,
+     "cl100k_p50": 1978,
+     "cl100k_p95": 6850,
+     "chars_p50": 6195,
+     "chars_p95": 21631,
+     "mean_pct_of_text_embedded": 10.1,
+     "model_per_cl100k": 0.85,
+     "chars_per_cl100k": 3.15
+    },
+    "lei": {
+     "n": 400,
+     "pct_over_limit": 47.5,
+     "model_tok_p50": 124,
+     "model_tok_p95": 316,
+     "cl100k_p50": 149,
+     "cl100k_p95": 388,
+     "chars_p50": 469,
+     "chars_p95": 1311,
+     "mean_pct_of_text_embedded": 80.9,
+     "model_per_cl100k": 0.83,
+     "chars_per_cl100k": 3.22
+    },
+    "tjdft": {
+     "n": 807,
+     "pct_over_limit": 99.8,
+     "model_tok_p50": 3186,
+     "model_tok_p95": 12219,
+     "cl100k_p50": 3777,
+     "cl100k_p95": 14585,
+     "chars_p50": 12294,
+     "chars_p95": 47677,
+     "mean_pct_of_text_embedded": 5.3,
+     "model_per_cl100k": 0.84,
+     "chars_per_cl100k": 3.25
+    }
+   }
+  }
+ }
+}
