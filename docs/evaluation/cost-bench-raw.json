@@ -1,0 +1,55 @@
+{
+ "gpu": "AMD Radeon Graphics",
+ "n_articles": 1000,
+ "models": {
+  "paraphrase-multilingual-MiniLM-L12-v2": {
+   "dims": 384,
+   "max_seq": 128,
+   "params_M": 118,
+   "encode_s_per_1k_articles_gpu": 4.4,
+   "query_ms_gpu_p50": 3.8,
+   "query_ms_gpu_p95": 4.5,
+   "query_ms_cpu_p50": 8.9,
+   "query_ms_cpu_p95": 12.9,
+   "vram_peak_gib": 0.59,
+   "index_gib_at_735194": 1.05
+  },
+  "intfloat/multilingual-e5-small": {
+   "dims": 384,
+   "max_seq": 512,
+   "params_M": 118,
+   "encode_s_per_1k_articles_gpu": 9.8,
+   "query_ms_gpu_p50": 4.3,
+   "query_ms_gpu_p95": 4.8,
+   "query_ms_cpu_p50": 8.8,
+   "query_ms_cpu_p95": 9.8,
+   "vram_peak_gib": 0.89,
+   "index_gib_at_735194": 1.05
+  },
+  "intfloat/multilingual-e5-base": {
+   "dims": 768,
+   "max_seq": 512,
+   "params_M": 278,
+   "encode_s_per_1k_articles_gpu": 23.4,
+   "query_ms_gpu_p50": 5.4,
+   "query_ms_gpu_p95": 5.5,
+   "query_ms_cpu_p50": 29.5,
+   "query_ms_cpu_p95": 31.2,
+   "vram_peak_gib": 1.54,
+   "index_gib_at_735194": 2.1
+  },
+  "BAAI/bge-m3": {
+   "dims": 1024,
+   "max_seq": 512,
+   "params_M": 568,
+   "encode_s_per_1k_articles_gpu": 92.3,
+   "query_ms_gpu_p50": 13.6,
+   "query_ms_gpu_p95": 15.2,
+   "query_ms_cpu_p50": 94.6,
+   "query_ms_cpu_p95": 121.6,
+   "vram_peak_gib": 2.76,
+   "index_gib_at_735194": 2.8
+  }
+ },
+ "rerank_top30_ms_gpu_p50": 650.1
+}

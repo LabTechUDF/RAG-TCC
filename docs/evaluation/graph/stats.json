@@ -1,0 +1,49 @@
+{
+ "articles": 6135,
+ "edges": 1383,
+ "unresolved_mentions": 278,
+ "skipped_foreign_law": 104,
+ "cross_code_edges": 150,
+ "top_cited": [
+  [
+   "lei:cf-88:art-195",
+   24
+  ],
+  [
+   "lei:cf-88:art-37",
+   19
+  ],
+  [
+   "lei:cf-88:art-155",
+   15
+  ],
+  [
+   "lei:cf-88:art-158",
+   12
+  ],
+  [
+   "lei:cf-88:art-153",
+   11
+  ],
+  [
+   "lei:cf-88:art-159",
+   10
+  ],
+  [
+   "lei:cf-88:art-239",
+   10
+  ],
+  [
+   "lei:cf-88:art-150",
+   10
+  ],
+  [
+   "lei:eca:art-28",
+   10
+  ],
+  [
+   "lei:cf-88:art-5",
+   9
+  ]
+ ]
+}
